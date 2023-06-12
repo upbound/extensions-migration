@@ -25,6 +25,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 
 	"github.com/alecthomas/kong"
@@ -35,7 +36,12 @@ import (
 )
 
 const (
-	defaultKubeConfig = ".kube/config"
+	defaultKubeConfig          = ".kube/config"
+	commentFamilyConfigPackage = " # automatically installed as a dependency of the family packages"
+)
+
+var (
+	regexFamilyConfigPackageName = regexp.MustCompile(`^provider-family-(aws|azure|gcp)$`)
 )
 
 // Options represents the available subcommands of provider-list:
@@ -87,7 +93,11 @@ func main() {
 	sort.Strings(providers)
 	logger := log.New(os.Stdout, "", 0)
 	for _, p := range providers {
-		logger.Printf("%s", fmt.Sprintf("%s/%s:%s", opts.RegistryOrg, p, opts.Version))
+		packageComment := ""
+		if regexFamilyConfigPackageName.MatchString(p) {
+			packageComment = commentFamilyConfigPackage
+		}
+		logger.Printf("%s", fmt.Sprintf("%s/%s:%s%s", opts.RegistryOrg, p, opts.Version, packageComment))
 	}
 }
 

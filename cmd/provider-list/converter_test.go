@@ -97,7 +97,8 @@ func TestGetSSOPNameFromManagedResource(t *testing.T) {
 			},
 			want: want{
 				ssopMap: map[string]struct{}{
-					"provider-aws-ec2": {},
+					"provider-aws-ec2":    {},
+					"provider-family-aws": {},
 				},
 				err: nil,
 			},
@@ -126,6 +127,7 @@ func TestGetSSOPNameFromManagedResource(t *testing.T) {
 			want: want{
 				ssopMap: map[string]struct{}{
 					"provider-azure-network": {},
+					"provider-family-azure":  {},
 				},
 				err: nil,
 			},
@@ -153,6 +155,7 @@ func TestGetSSOPNameFromManagedResource(t *testing.T) {
 			},
 			want: want{
 				ssopMap: map[string]struct{}{
+					"provider-family-gcp":  {},
 					"provider-gcp-network": {},
 				},
 				err: nil,

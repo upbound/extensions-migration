@@ -29,9 +29,8 @@ var SSOPNames = map[string]struct{}{}
 
 // GetSSOPNameFromManagedResource collects the new provider name from MR
 func GetSSOPNameFromManagedResource(u migration.UnstructuredWithMetadata) error {
-	newProviderName := getProviderAndServiceName(u.Object.GroupVersionKind().Group)
-	if newProviderName != "" {
-		SSOPNames[newProviderName] = struct{}{}
+	for _, pn := range getProviderAndServiceName(u.Object.GroupVersionKind().Group) {
+		SSOPNames[pn] = struct{}{}
 	}
 	return nil
 }
@@ -47,15 +46,14 @@ func GetSSOPNameFromComposition(u migration.UnstructuredWithMetadata) error {
 		if err != nil {
 			return errors.Wrap(err, "resource raw cannot convert to unstructured")
 		}
-		newProviderName := getProviderAndServiceName(composedUnstructured.GroupVersionKind().Group)
-		if newProviderName != "" {
-			SSOPNames[newProviderName] = struct{}{}
+		for _, pn := range getProviderAndServiceName(composedUnstructured.GroupVersionKind().Group) {
+			SSOPNames[pn] = struct{}{}
 		}
 	}
 	return nil
 }
 
-func getProviderAndServiceName(name string) string {
+func getProviderAndServiceName(name string) []string {
 	parts := strings.Split(name, ".")
 	if len(parts) > 3 {
 		provider := ""
@@ -67,10 +65,10 @@ func getProviderAndServiceName(name string) string {
 		case "azure":
 			provider = "provider-azure"
 		default:
-			return ""
+			return nil
 		}
 		service := parts[0]
-		return fmt.Sprintf("%s-%s", provider, service)
+		return []string{fmt.Sprintf("%s-%s", provider, service), fmt.Sprintf("provider-family-%s", parts[1])}
 	}
-	return ""
+	return nil
 }
