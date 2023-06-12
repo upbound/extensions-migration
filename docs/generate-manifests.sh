@@ -2,11 +2,11 @@
 set -e
 
 # shellcheck disable=SC2034
-version_aws=v0.37.0
+version_aws=v0.36.0
 # shellcheck disable=SC2034
-version_azure=v0.34.0
+version_azure=v0.33.0
 # shellcheck disable=SC2034
-version_gcp=v0.34.0
+version_gcp=v0.33.0
 
 rm -f "sp-manual.yaml" && touch "sp-manual.yaml"
 rm -f "sp-family-manual.yaml" && touch "sp-family-manual.yaml"
@@ -45,9 +45,9 @@ do
     echo "apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
-  name: upbound-release-candidates-provider-${providername}
+  name: upbound-provider-${providername}
 spec:
-  package: xpkg.upbound.io/upbound-release-candidates/provider-${providername}:${version}
+  package: xpkg.upbound.io/upbound/provider-${providername}:${version}
   revisionActivationPolicy: Manual" >> "${filename}"
     echo "---" >> "${filename}"
     fi

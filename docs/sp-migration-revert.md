@@ -31,7 +31,7 @@ EOF
 5. Delete smaller provider(s):
 
 ```bash
-kubectl delete provider.pkg $(kubectl get provider.pkg |grep upbound-release-candidates |awk '{print $1}')
+kubectl delete provider.pkg $(kubectl get provider.pkg |grep upbound |awk '{print $1}')
 ```
 
 6. Update monolith providers with `revisionActivationPolicy:Automatic`:
