@@ -1,11 +1,11 @@
 ---
 name: Bug Report
-about: Help us diagnose and fix bugs in extensions-migration
+about: Help us diagnose and fix bugs
 labels: bug,needs:triage
 title: 
 ---
 <!--
-Thank you for helping to improve extensions-migration!
+Thank you for helping to improve the code in this repo!
 
 Please be sure to search for open issues before raising a new one. We use issues
 for bug reports and feature requests.
@@ -13,8 +13,8 @@ for bug reports and feature requests.
 
 ### What happened?
 <!--
-Please let us know what behaviour you expected and how extensions-migration diverged from
-that behaviour.
+Please let us know what behaviour you expected and how what you observerd
+diverged from that behaviour.
 -->
 
 
@@ -27,11 +27,11 @@ appreciated!
 
 ### What environment did it happen in?
 
-* extensions-migration Version:
+* Release version:
 
 <!--
-Include at least the version or commit of extensions-migration you were running. Consider
-also including your:
+Include at least the version or commit of extensions-migration you were running.
+Consider also including your:
 
 * Cloud provider or hardware configuration
 * Kubernetes version (use `kubectl version`)
