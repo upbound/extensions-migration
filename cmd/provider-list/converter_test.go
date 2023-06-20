@@ -17,6 +17,8 @@ package main
 import (
 	xpmetav1 "github.com/crossplane/crossplane/apis/pkg/meta/v1"
 	xpmetav1alpha1 "github.com/crossplane/crossplane/apis/pkg/meta/v1alpha1"
+	xppkgv1 "github.com/crossplane/crossplane/apis/pkg/v1"
+	xppkgv1beta1 "github.com/crossplane/crossplane/apis/pkg/v1beta1"
 	"sort"
 	"strings"
 	"testing"
@@ -304,19 +306,16 @@ func TestConfigurationMetadataV1(t *testing.T) {
 				"provider-family-aws": {},
 				"provider-aws-ec2":    {},
 			}
-			cc := ConfigurationMetaConverter{
-				monolith: "provider-aws",
-				version:  "v0.33.0",
+			cc := ConverterParameters{
+				monolith:      "provider-aws",
+				familyVersion: "v0.33.0",
 			}
 			err := cc.ConfigurationMetadataV1(tc.args.c)
 			if diff := cmp.Diff(tc.want.err, err); diff != "" {
 				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
 			}
 			sort.Slice(tc.args.c.Spec.DependsOn, func(i, j int) bool {
-				if strings.Compare(*tc.args.c.Spec.DependsOn[i].Provider, *tc.args.c.Spec.DependsOn[j].Provider) == -1 {
-					return true
-				}
-				return false
+				return strings.Compare(*tc.args.c.Spec.DependsOn[i].Provider, *tc.args.c.Spec.DependsOn[j].Provider) == -1
 			})
 			if diff := cmp.Diff(tc.want.c, tc.args.c); diff != "" {
 				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
@@ -422,21 +421,139 @@ func TestConfigurationMetadataV1Alpha(t *testing.T) {
 				"provider-family-aws": {},
 				"provider-aws-ec2":    {},
 			}
-			cc := ConfigurationMetaConverter{
-				monolith: "provider-aws",
-				version:  "v0.33.0",
+			cc := ConverterParameters{
+				monolith:      "provider-aws",
+				familyVersion: "v0.33.0",
 			}
 			err := cc.ConfigurationMetadataV1Alpha1(tc.args.c)
 			if diff := cmp.Diff(tc.want.err, err); diff != "" {
 				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
 			}
 			sort.Slice(tc.args.c.Spec.DependsOn, func(i, j int) bool {
-				if strings.Compare(*tc.args.c.Spec.DependsOn[i].Provider, *tc.args.c.Spec.DependsOn[j].Provider) == -1 {
-					return true
-				}
-				return false
+				return strings.Compare(*tc.args.c.Spec.DependsOn[i].Provider, *tc.args.c.Spec.DependsOn[j].Provider) == -1
 			})
 			if diff := cmp.Diff(tc.want.c, tc.args.c); diff != "" {
+				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestConfigurationPackageV1(t *testing.T) {
+	type args struct {
+		pkg *xppkgv1.Configuration
+	}
+	type want struct {
+		pkg *xppkgv1.Configuration
+		err error
+	}
+
+	cases := map[string]struct {
+		args
+		want
+	}{
+		"ConfigurationPkg": {
+			args: args{
+				pkg: &xppkgv1.Configuration{
+					Spec: xppkgv1.ConfigurationSpec{
+						PackageSpec: xppkgv1.PackageSpec{
+							Package: "xpkg.upbound.io/upbound/provider-ref-aws:v0.1.0",
+						},
+					},
+				},
+			},
+			want: want{
+				pkg: &xppkgv1.Configuration{
+					Spec: xppkgv1.ConfigurationSpec{
+						PackageSpec: xppkgv1.PackageSpec{
+							Package: "xpkg.upbound.io/upbound/provider-ref-aws:v0.1.0-ssop",
+						},
+					},
+				},
+				err: nil,
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			cc := ConverterParameters{
+				regorg:        "xpkg.upbound.io/upbound",
+				refPackage:    "provider-ref-aws",
+				familyVersion: "v0.1.0-ssop",
+			}
+			err := cc.ConfigurationPackageV1(tc.args.pkg)
+			if diff := cmp.Diff(tc.want.err, err); diff != "" {
+				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
+			}
+			if diff := cmp.Diff(tc.want.pkg, tc.args.pkg); diff != "" {
+				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestPackageLockV1Beta1(t *testing.T) {
+	type args struct {
+		lock *xppkgv1beta1.Lock
+	}
+	type want struct {
+		lock *xppkgv1beta1.Lock
+		err  error
+	}
+
+	cases := map[string]struct {
+		args
+		want
+	}{
+		"NeedRemoval": {
+			args: args{
+				lock: &xppkgv1beta1.Lock{
+					Packages: []xppkgv1beta1.LockPackage{
+						{
+							Source: awsPackage,
+						},
+					},
+				},
+			},
+			want: want{
+				lock: &xppkgv1beta1.Lock{
+					Packages: []xppkgv1beta1.LockPackage{},
+				},
+				err: nil,
+			},
+		},
+		"NoNeedRemoval": {
+			args: args{
+				lock: &xppkgv1beta1.Lock{
+					Packages: []xppkgv1beta1.LockPackage{
+						{
+							Source: "xpkg.upbound.io/upbound/provider-helm",
+						},
+					},
+				},
+			},
+			want: want{
+				lock: &xppkgv1beta1.Lock{
+					Packages: []xppkgv1beta1.LockPackage{
+						{
+							Source: "xpkg.upbound.io/upbound/provider-helm",
+						},
+					},
+				},
+				err: nil,
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			cc := ConverterParameters{}
+			err := cc.PackageLockV1Beta1(tc.args.lock)
+			if diff := cmp.Diff(tc.want.err, err); diff != "" {
+				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
+			}
+			if diff := cmp.Diff(tc.want.lock, tc.args.lock); diff != "" {
 				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
 			}
 		})

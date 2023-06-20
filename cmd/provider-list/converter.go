@@ -22,8 +22,16 @@ import (
 
 	xpmetav1 "github.com/crossplane/crossplane/apis/pkg/meta/v1"
 	xpmetav1alpha1 "github.com/crossplane/crossplane/apis/pkg/meta/v1alpha1"
+	xppkgv1 "github.com/crossplane/crossplane/apis/pkg/v1"
+	xppkgv1beta1 "github.com/crossplane/crossplane/apis/pkg/v1beta1"
 	"github.com/pkg/errors"
 	"github.com/upbound/upjet/pkg/migration"
+)
+
+const (
+	awsPackage   = "xpkg.upbound.io/upbound/provider-aws"
+	azurePackage = "xpkg.upbound.io/upbound/provider-azure"
+	gcpPackage   = "xpkg.upbound.io/upbound/provider-gcp"
 )
 
 // SSOPNames is a global map for collecting the new provider names
@@ -75,11 +83,14 @@ func getProviderAndServiceName(name string) []string {
 	return nil
 }
 
-type ConfigurationMetaConverter struct {
-	registry, organization, version, monolith string
+type ConverterParameters struct {
+	regorg        string
+	familyVersion string
+	monolith      string
+	refPackage    string
 }
 
-func (cc *ConfigurationMetaConverter) ConfigurationMetadataV1(c *xpmetav1.Configuration) error {
+func (cc *ConverterParameters) ConfigurationMetadataV1(c *xpmetav1.Configuration) error {
 	var convertedList []xpmetav1.Dependency
 
 	for _, provider := range c.Spec.DependsOn {
@@ -89,10 +100,10 @@ func (cc *ConfigurationMetaConverter) ConfigurationMetadataV1(c *xpmetav1.Config
 		convertedList = append(convertedList, provider)
 	}
 
-	for ssopName, _ := range SSOPNames {
+	for ssopName := range SSOPNames {
 		dependency := xpmetav1.Dependency{
 			Provider: ptrFromString(fmt.Sprintf("xpkg.upbound.io/upbound/%s", ssopName)),
-			Version:  fmt.Sprintf(">=%s", cc.version),
+			Version:  fmt.Sprintf(">=%s", cc.familyVersion),
 		}
 		convertedList = append(convertedList, dependency)
 	}
@@ -101,7 +112,7 @@ func (cc *ConfigurationMetaConverter) ConfigurationMetadataV1(c *xpmetav1.Config
 	return nil
 }
 
-func (cc *ConfigurationMetaConverter) ConfigurationMetadataV1Alpha1(c *xpmetav1alpha1.Configuration) error {
+func (cc *ConverterParameters) ConfigurationMetadataV1Alpha1(c *xpmetav1alpha1.Configuration) error {
 	var convertedList []xpmetav1alpha1.Dependency
 
 	for _, provider := range c.Spec.DependsOn {
@@ -111,15 +122,29 @@ func (cc *ConfigurationMetaConverter) ConfigurationMetadataV1Alpha1(c *xpmetav1a
 		convertedList = append(convertedList, provider)
 	}
 
-	for ssopName, _ := range SSOPNames {
+	for ssopName := range SSOPNames {
 		dependency := xpmetav1alpha1.Dependency{
 			Provider: ptrFromString(fmt.Sprintf("xpkg.upbound.io/upbound/%s", ssopName)),
-			Version:  fmt.Sprintf(">=%s", cc.version),
+			Version:  fmt.Sprintf(">=%s", cc.familyVersion),
 		}
 		convertedList = append(convertedList, dependency)
 	}
 
 	c.Spec.DependsOn = convertedList
+	return nil
+}
+
+func (cc *ConverterParameters) ConfigurationPackageV1(pkg *xppkgv1.Configuration) error {
+	pkg.Spec.Package = fmt.Sprintf("%s/%s:%s", cc.regorg, cc.refPackage, cc.familyVersion)
+	return nil
+}
+
+func (cc *ConverterParameters) PackageLockV1Beta1(lock *xppkgv1beta1.Lock) error {
+	for i, lp := range lock.Packages {
+		if lp.Source == awsPackage || lp.Source == azurePackage || lp.Source == gcpPackage {
+			lock.Packages = append(lock.Packages[:i], lock.Packages[i+1:]...)
+		}
+	}
 	return nil
 }
 
