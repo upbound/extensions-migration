@@ -15,6 +15,10 @@
 package main
 
 import (
+	xpmetav1 "github.com/crossplane/crossplane/apis/pkg/meta/v1"
+	xpmetav1alpha1 "github.com/crossplane/crossplane/apis/pkg/meta/v1alpha1"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -197,6 +201,242 @@ func TestGetSSOPNameFromManagedResource(t *testing.T) {
 				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
 			}
 			if diff := cmp.Diff(tc.want.ssopMap, SSOPNames); diff != "" {
+				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestConfigurationMetadataV1(t *testing.T) {
+	type args struct {
+		c *xpmetav1.Configuration
+	}
+	type want struct {
+		c   *xpmetav1.Configuration
+		err error
+	}
+
+	cases := map[string]struct {
+		args
+		want
+	}{
+		"WithAnotherProvider": {
+			args: args{
+				c: &xpmetav1.Configuration{
+					Spec: xpmetav1.ConfigurationSpec{
+						MetaSpec: xpmetav1.MetaSpec{
+							DependsOn: []xpmetav1.Dependency{
+								{
+									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-aws"),
+									Version:  ">=v0.32.0",
+								},
+								{
+									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-helm"),
+									Version:  ">=v0.15.0",
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				c: &xpmetav1.Configuration{
+					Spec: xpmetav1.ConfigurationSpec{
+						MetaSpec: xpmetav1.MetaSpec{
+							DependsOn: []xpmetav1.Dependency{
+								{
+									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-aws-ec2"),
+									Version:  ">=v0.33.0",
+								},
+								{
+									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-family-aws"),
+									Version:  ">=v0.33.0",
+								},
+								{
+									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-helm"),
+									Version:  ">=v0.15.0",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		"WithoutAnotherProvider": {
+			args: args{
+				c: &xpmetav1.Configuration{
+					Spec: xpmetav1.ConfigurationSpec{
+						MetaSpec: xpmetav1.MetaSpec{
+							DependsOn: []xpmetav1.Dependency{
+								{
+									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-aws"),
+									Version:  ">=v0.32.0",
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				c: &xpmetav1.Configuration{
+					Spec: xpmetav1.ConfigurationSpec{
+						MetaSpec: xpmetav1.MetaSpec{
+							DependsOn: []xpmetav1.Dependency{
+								{
+									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-aws-ec2"),
+									Version:  ">=v0.33.0",
+								},
+								{
+									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-family-aws"),
+									Version:  ">=v0.33.0",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			SSOPNames = map[string]struct{}{
+				"provider-family-aws": {},
+				"provider-aws-ec2":    {},
+			}
+			cc := ConfigurationMetaConverter{
+				monolith: "provider-aws",
+				version:  "v0.33.0",
+			}
+			err := cc.ConfigurationMetadataV1(tc.args.c)
+			if diff := cmp.Diff(tc.want.err, err); diff != "" {
+				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
+			}
+			sort.Slice(tc.args.c.Spec.DependsOn, func(i, j int) bool {
+				if strings.Compare(*tc.args.c.Spec.DependsOn[i].Provider, *tc.args.c.Spec.DependsOn[j].Provider) == -1 {
+					return true
+				}
+				return false
+			})
+			if diff := cmp.Diff(tc.want.c, tc.args.c); diff != "" {
+				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestConfigurationMetadataV1Alpha(t *testing.T) {
+	type args struct {
+		c *xpmetav1alpha1.Configuration
+	}
+	type want struct {
+		c   *xpmetav1alpha1.Configuration
+		err error
+	}
+
+	cases := map[string]struct {
+		args
+		want
+	}{
+		"WithAnotherProvider": {
+			args: args{
+				c: &xpmetav1alpha1.Configuration{
+					Spec: xpmetav1alpha1.ConfigurationSpec{
+						MetaSpec: xpmetav1alpha1.MetaSpec{
+							DependsOn: []xpmetav1alpha1.Dependency{
+								{
+									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-aws"),
+									Version:  ">=v0.32.0",
+								},
+								{
+									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-helm"),
+									Version:  ">=v0.15.0",
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				c: &xpmetav1alpha1.Configuration{
+					Spec: xpmetav1alpha1.ConfigurationSpec{
+						MetaSpec: xpmetav1alpha1.MetaSpec{
+							DependsOn: []xpmetav1alpha1.Dependency{
+								{
+									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-aws-ec2"),
+									Version:  ">=v0.33.0",
+								},
+								{
+									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-family-aws"),
+									Version:  ">=v0.33.0",
+								},
+								{
+									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-helm"),
+									Version:  ">=v0.15.0",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		"WithoutAnotherProvider": {
+			args: args{
+				c: &xpmetav1alpha1.Configuration{
+					Spec: xpmetav1alpha1.ConfigurationSpec{
+						MetaSpec: xpmetav1alpha1.MetaSpec{
+							DependsOn: []xpmetav1alpha1.Dependency{
+								{
+									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-aws"),
+									Version:  ">=v0.32.0",
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				c: &xpmetav1alpha1.Configuration{
+					Spec: xpmetav1alpha1.ConfigurationSpec{
+						MetaSpec: xpmetav1alpha1.MetaSpec{
+							DependsOn: []xpmetav1alpha1.Dependency{
+								{
+									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-aws-ec2"),
+									Version:  ">=v0.33.0",
+								},
+								{
+									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-family-aws"),
+									Version:  ">=v0.33.0",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			SSOPNames = map[string]struct{}{
+				"provider-family-aws": {},
+				"provider-aws-ec2":    {},
+			}
+			cc := ConfigurationMetaConverter{
+				monolith: "provider-aws",
+				version:  "v0.33.0",
+			}
+			err := cc.ConfigurationMetadataV1Alpha1(tc.args.c)
+			if diff := cmp.Diff(tc.want.err, err); diff != "" {
+				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
+			}
+			sort.Slice(tc.args.c.Spec.DependsOn, func(i, j int) bool {
+				if strings.Compare(*tc.args.c.Spec.DependsOn[i].Provider, *tc.args.c.Spec.DependsOn[j].Provider) == -1 {
+					return true
+				}
+				return false
+			})
+			if diff := cmp.Diff(tc.want.c, tc.args.c); diff != "" {
 				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
 			}
 		})

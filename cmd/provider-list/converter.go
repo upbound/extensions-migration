@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"strings"
 
+	xpmetav1 "github.com/crossplane/crossplane/apis/pkg/meta/v1"
+	xpmetav1alpha1 "github.com/crossplane/crossplane/apis/pkg/meta/v1alpha1"
 	"github.com/pkg/errors"
 	"github.com/upbound/upjet/pkg/migration"
 )
@@ -71,4 +73,56 @@ func getProviderAndServiceName(name string) []string {
 		return []string{fmt.Sprintf("%s-%s", provider, service), fmt.Sprintf("provider-family-%s", parts[1])}
 	}
 	return nil
+}
+
+type ConfigurationMetaConverter struct {
+	registry, organization, version, monolith string
+}
+
+func (cc *ConfigurationMetaConverter) ConfigurationMetadataV1(c *xpmetav1.Configuration) error {
+	var convertedList []xpmetav1.Dependency
+
+	for _, provider := range c.Spec.DependsOn {
+		if *provider.Provider == fmt.Sprintf("xpkg.upbound.io/upbound/%s", cc.monolith) {
+			continue
+		}
+		convertedList = append(convertedList, provider)
+	}
+
+	for ssopName, _ := range SSOPNames {
+		dependency := xpmetav1.Dependency{
+			Provider: ptrFromString(fmt.Sprintf("xpkg.upbound.io/upbound/%s", ssopName)),
+			Version:  fmt.Sprintf(">=%s", cc.version),
+		}
+		convertedList = append(convertedList, dependency)
+	}
+
+	c.Spec.DependsOn = convertedList
+	return nil
+}
+
+func (cc *ConfigurationMetaConverter) ConfigurationMetadataV1Alpha1(c *xpmetav1alpha1.Configuration) error {
+	var convertedList []xpmetav1alpha1.Dependency
+
+	for _, provider := range c.Spec.DependsOn {
+		if *provider.Provider == fmt.Sprintf("xpkg.upbound.io/upbound/%s", cc.monolith) {
+			continue
+		}
+		convertedList = append(convertedList, provider)
+	}
+
+	for ssopName, _ := range SSOPNames {
+		dependency := xpmetav1alpha1.Dependency{
+			Provider: ptrFromString(fmt.Sprintf("xpkg.upbound.io/upbound/%s", ssopName)),
+			Version:  fmt.Sprintf(">=%s", cc.version),
+		}
+		convertedList = append(convertedList, dependency)
+	}
+
+	c.Spec.DependsOn = convertedList
+	return nil
+}
+
+func ptrFromString(s string) *string {
+	return &s
 }
