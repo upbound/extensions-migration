@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package configuration
 
 import (
 	xpmetav1 "github.com/crossplane/crossplane/apis/pkg/meta/v1"
@@ -85,8 +85,8 @@ func TestGetSSOPNameFromManagedResource(t *testing.T) {
 		u migration.UnstructuredWithMetadata
 	}
 	type want struct {
-		ssopMap map[string]struct{}
-		err     error
+		providerNames map[string]struct{}
+		err           error
 	}
 
 	cases := map[string]struct {
@@ -102,7 +102,7 @@ func TestGetSSOPNameFromManagedResource(t *testing.T) {
 				},
 			},
 			want: want{
-				ssopMap: map[string]struct{}{
+				providerNames: map[string]struct{}{
 					"provider-aws-ec2":    {},
 					"provider-family-aws": {},
 				},
@@ -118,8 +118,8 @@ func TestGetSSOPNameFromManagedResource(t *testing.T) {
 				},
 			},
 			want: want{
-				ssopMap: map[string]struct{}{},
-				err:     nil,
+				providerNames: map[string]struct{}{},
+				err:           nil,
 			},
 		},
 		"Azure": {
@@ -131,7 +131,7 @@ func TestGetSSOPNameFromManagedResource(t *testing.T) {
 				},
 			},
 			want: want{
-				ssopMap: map[string]struct{}{
+				providerNames: map[string]struct{}{
 					"provider-azure-network": {},
 					"provider-family-azure":  {},
 				},
@@ -147,8 +147,8 @@ func TestGetSSOPNameFromManagedResource(t *testing.T) {
 				},
 			},
 			want: want{
-				ssopMap: map[string]struct{}{},
-				err:     nil,
+				providerNames: map[string]struct{}{},
+				err:           nil,
 			},
 		},
 		"Gcp": {
@@ -160,7 +160,7 @@ func TestGetSSOPNameFromManagedResource(t *testing.T) {
 				},
 			},
 			want: want{
-				ssopMap: map[string]struct{}{
+				providerNames: map[string]struct{}{
 					"provider-family-gcp":  {},
 					"provider-gcp-network": {},
 				},
@@ -176,8 +176,8 @@ func TestGetSSOPNameFromManagedResource(t *testing.T) {
 				},
 			},
 			want: want{
-				ssopMap: map[string]struct{}{},
-				err:     nil,
+				providerNames: map[string]struct{}{},
+				err:           nil,
 			},
 		},
 		"InvalidProvider": {
@@ -189,20 +189,20 @@ func TestGetSSOPNameFromManagedResource(t *testing.T) {
 				},
 			},
 			want: want{
-				ssopMap: map[string]struct{}{},
-				err:     nil,
+				providerNames: map[string]struct{}{},
+				err:           nil,
 			},
 		},
 	}
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			SSOPNames = map[string]struct{}{}
-			err := GetSSOPNameFromManagedResource(tc.u)
+			mp := NewMRPreProcessor()
+			err := mp.GetSSOPNameFromManagedResource(tc.u)
 			if diff := cmp.Diff(tc.want.err, err); diff != "" {
 				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
 			}
-			if diff := cmp.Diff(tc.want.ssopMap, SSOPNames); diff != "" {
+			if diff := cmp.Diff(tc.want.providerNames, mp.ProviderNames); diff != "" {
 				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
 			}
 		})
@@ -302,15 +302,17 @@ func TestConfigurationMetadataV1(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			SSOPNames = map[string]struct{}{
+			cp := NewCompositionPreProcessor()
+			cp.ProviderNames = map[string]struct{}{
 				"provider-family-aws": {},
 				"provider-aws-ec2":    {},
 			}
-			cc := ConverterParameters{
-				monolith:      "provider-aws",
-				familyVersion: "v0.33.0",
+			cm := ConfigMetaParameters{
+				monolith:             "provider-aws",
+				familyVersion:        "v0.33.0",
+				compositionProcessor: cp,
 			}
-			err := cc.ConfigurationMetadataV1(tc.args.c)
+			err := cm.ConfigurationMetadataV1(tc.args.c)
 			if diff := cmp.Diff(tc.want.err, err); diff != "" {
 				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
 			}
@@ -417,15 +419,17 @@ func TestConfigurationMetadataV1Alpha(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			SSOPNames = map[string]struct{}{
+			cp := NewCompositionPreProcessor()
+			cp.ProviderNames = map[string]struct{}{
 				"provider-family-aws": {},
 				"provider-aws-ec2":    {},
 			}
-			cc := ConverterParameters{
-				monolith:      "provider-aws",
-				familyVersion: "v0.33.0",
+			cm := ConfigMetaParameters{
+				monolith:             "provider-aws",
+				familyVersion:        "v0.33.0",
+				compositionProcessor: cp,
 			}
-			err := cc.ConfigurationMetadataV1Alpha1(tc.args.c)
+			err := cm.ConfigurationMetadataV1Alpha1(tc.args.c)
 			if diff := cmp.Diff(tc.want.err, err); diff != "" {
 				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
 			}
@@ -477,12 +481,12 @@ func TestConfigurationPackageV1(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			cc := ConverterParameters{
+			cp := ConfigPkgParameters{
 				regorg:        "xpkg.upbound.io/upbound",
-				refPackage:    "provider-ref-aws",
+				packageName:   "provider-ref-aws",
 				familyVersion: "v0.1.0-ssop",
 			}
-			err := cc.ConfigurationPackageV1(tc.args.pkg)
+			err := cp.ConfigurationPackageV1(tc.args.pkg)
 			if diff := cmp.Diff(tc.want.err, err); diff != "" {
 				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
 			}
@@ -548,8 +552,8 @@ func TestPackageLockV1Beta1(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			cc := ConverterParameters{}
-			err := cc.PackageLockV1Beta1(tc.args.lock)
+			l := LockParameters{}
+			err := l.PackageLockV1Beta1(tc.args.lock)
 			if diff := cmp.Diff(tc.want.err, err); diff != "" {
 				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
 			}
