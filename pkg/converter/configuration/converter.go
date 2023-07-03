@@ -83,22 +83,14 @@ func (cp *compositionPreProcessor) GetSSOPNameFromComposition(u migration.Unstru
 
 func getProviderAndServiceName(name string) []string {
 	parts := strings.Split(name, ".")
-	if len(parts) > 3 {
-		provider := ""
-		switch parts[1] {
-		case "aws":
-			provider = "provider-aws"
-		case "gcp":
-			provider = "provider-gcp"
-		case "azure":
-			provider = "provider-azure"
-		default:
-			return nil
-		}
-		service := parts[0]
-		return []string{fmt.Sprintf("%s-%s", provider, service), fmt.Sprintf("provider-family-%s", parts[1])}
+	switch len(parts) {
+	case 4:
+		return []string{fmt.Sprintf("provider-%s-%s", parts[1], parts[0]), fmt.Sprintf("provider-family-%s", parts[1])}
+	case 3:
+		return []string{fmt.Sprintf("provider-family-%s", parts[0])}
+	default:
+		return nil
 	}
-	return nil
 }
 
 type ConfigMetaParameters struct {
@@ -124,6 +116,9 @@ func (cm *ConfigMetaParameters) ConfigurationMetadataV1(c *xpmetav1.Configuratio
 	}
 
 	for providerName := range cm.CompositionProcessor.ProviderNames {
+		if strings.HasPrefix(providerName, "provider-family-") {
+			continue
+		}
 		dependency := xpmetav1.Dependency{
 			Provider: ptrFromString(fmt.Sprintf("xpkg.upbound.io/upbound/%s", providerName)),
 			Version:  fmt.Sprintf(">=%s", cm.FamilyVersion),
@@ -146,6 +141,9 @@ func (cm *ConfigMetaParameters) ConfigurationMetadataV1Alpha1(c *xpmetav1alpha1.
 	}
 
 	for providerName := range cm.CompositionProcessor.ProviderNames {
+		if strings.HasPrefix(providerName, "provider-family-") {
+			continue
+		}
 		dependency := xpmetav1alpha1.Dependency{
 			Provider: ptrFromString(fmt.Sprintf("xpkg.upbound.io/upbound/%s", providerName)),
 			Version:  fmt.Sprintf(">=%s", cm.FamilyVersion),
@@ -163,11 +161,13 @@ func (cp *ConfigPkgParameters) ConfigurationPackageV1(pkg *xppkgv1.Configuration
 }
 
 func (l *LockParameters) PackageLockV1Beta1(lock *xppkgv1beta1.Lock) error {
-	for i, lp := range lock.Packages {
-		if lp.Source == awsPackage || lp.Source == azurePackage || lp.Source == gcpPackage {
-			lock.Packages = append(lock.Packages[:i], lock.Packages[i+1:]...)
+	packages := make([]xppkgv1beta1.LockPackage, 0, len(lock.Packages))
+	for _, lp := range lock.Packages {
+		if lp.Source != awsPackage && lp.Source != azurePackage && lp.Source != gcpPackage {
+			packages = append(packages, lp)
 		}
 	}
+	lock.Packages = packages
 	return nil
 }
 
@@ -175,9 +175,9 @@ type ProviderPkgFamilyConfigParameters struct {
 	FamilyVersion string
 }
 
-func (pc *ProviderPkgFamilyConfigParameters) ProviderPackageV1(p xppkgv1.Provider) ([]xppkgv1.Provider, error) {
+func (pc *ProviderPkgFamilyConfigParameters) ProviderPackageV1(s xppkgv1.Provider) ([]xppkgv1.Provider, error) {
 	ap := xppkgv1.ManualActivation
-	provider := extractProviderNameFromPackageName(p.Spec.PackageSpec.Package)
+	provider := extractProviderNameFromPackageName(s.Spec.PackageSpec.Package)
 	switch provider {
 	case "provider-aws":
 		provider = "provider-family-aws"
@@ -188,6 +188,7 @@ func (pc *ProviderPkgFamilyConfigParameters) ProviderPackageV1(p xppkgv1.Provide
 	default:
 	}
 
+	p := xppkgv1.Provider{}
 	p.ObjectMeta.Name = provider
 	p.Spec.PackageSpec = xppkgv1.PackageSpec{
 		Package:                  fmt.Sprintf("%s/%s:%s", "xpkg.upbound.io/upbound", provider, pc.FamilyVersion),
