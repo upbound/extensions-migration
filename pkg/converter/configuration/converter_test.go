@@ -15,13 +15,14 @@
 package configuration
 
 import (
+	"sort"
+	"strings"
+	"testing"
+
 	xpmetav1 "github.com/crossplane/crossplane/apis/pkg/meta/v1"
 	xpmetav1alpha1 "github.com/crossplane/crossplane/apis/pkg/meta/v1alpha1"
 	xppkgv1 "github.com/crossplane/crossplane/apis/pkg/v1"
 	xppkgv1beta1 "github.com/crossplane/crossplane/apis/pkg/v1beta1"
-	"sort"
-	"strings"
-	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/upbound/upjet/pkg/migration"
@@ -308,9 +309,9 @@ func TestConfigurationMetadataV1(t *testing.T) {
 				"provider-aws-ec2":    {},
 			}
 			cm := ConfigMetaParameters{
-				monolith:             "provider-aws",
-				familyVersion:        "v0.33.0",
-				compositionProcessor: cp,
+				Monolith:             "provider-aws",
+				FamilyVersion:        "v0.33.0",
+				CompositionProcessor: cp,
 			}
 			err := cm.ConfigurationMetadataV1(tc.args.c)
 			if diff := cmp.Diff(tc.want.err, err); diff != "" {
@@ -425,9 +426,9 @@ func TestConfigurationMetadataV1Alpha(t *testing.T) {
 				"provider-aws-ec2":    {},
 			}
 			cm := ConfigMetaParameters{
-				monolith:             "provider-aws",
-				familyVersion:        "v0.33.0",
-				compositionProcessor: cp,
+				Monolith:             "provider-aws",
+				FamilyVersion:        "v0.33.0",
+				CompositionProcessor: cp,
 			}
 			err := cm.ConfigurationMetadataV1Alpha1(tc.args.c)
 			if diff := cmp.Diff(tc.want.err, err); diff != "" {
@@ -482,9 +483,7 @@ func TestConfigurationPackageV1(t *testing.T) {
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			cp := ConfigPkgParameters{
-				regorg:        "xpkg.upbound.io/upbound",
-				packageName:   "provider-ref-aws",
-				familyVersion: "v0.1.0-ssop",
+				PackageURL: "xpkg.upbound.io/upbound/provider-ref-aws:v0.1.0-ssop",
 			}
 			err := cp.ConfigurationPackageV1(tc.args.pkg)
 			if diff := cmp.Diff(tc.want.err, err); diff != "" {

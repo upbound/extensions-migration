@@ -101,15 +101,13 @@ func getProviderAndServiceName(name string) []string {
 }
 
 type ConfigMetaParameters struct {
-	familyVersion        string
-	monolith             string
-	compositionProcessor *compositionPreProcessor
+	FamilyVersion        string
+	Monolith             string
+	CompositionProcessor *compositionPreProcessor
 }
 
 type ConfigPkgParameters struct {
-	regorg        string
-	familyVersion string
-	packageName   string
+	PackageURL string
 }
 
 type LockParameters struct{}
@@ -118,16 +116,16 @@ func (cm *ConfigMetaParameters) ConfigurationMetadataV1(c *xpmetav1.Configuratio
 	var convertedList []xpmetav1.Dependency
 
 	for _, provider := range c.Spec.DependsOn {
-		if *provider.Provider == fmt.Sprintf("xpkg.upbound.io/upbound/%s", cm.monolith) {
+		if *provider.Provider == fmt.Sprintf("xpkg.upbound.io/upbound/%s", cm.Monolith) {
 			continue
 		}
 		convertedList = append(convertedList, provider)
 	}
 
-	for providerName := range cm.compositionProcessor.ProviderNames {
+	for providerName := range cm.CompositionProcessor.ProviderNames {
 		dependency := xpmetav1.Dependency{
 			Provider: ptrFromString(fmt.Sprintf("xpkg.upbound.io/upbound/%s", providerName)),
-			Version:  fmt.Sprintf(">=%s", cm.familyVersion),
+			Version:  fmt.Sprintf(">=%s", cm.FamilyVersion),
 		}
 		convertedList = append(convertedList, dependency)
 	}
@@ -140,16 +138,16 @@ func (cm *ConfigMetaParameters) ConfigurationMetadataV1Alpha1(c *xpmetav1alpha1.
 	var convertedList []xpmetav1alpha1.Dependency
 
 	for _, provider := range c.Spec.DependsOn {
-		if *provider.Provider == fmt.Sprintf("xpkg.upbound.io/upbound/%s", cm.monolith) {
+		if *provider.Provider == fmt.Sprintf("xpkg.upbound.io/upbound/%s", cm.Monolith) {
 			continue
 		}
 		convertedList = append(convertedList, provider)
 	}
 
-	for providerName := range cm.compositionProcessor.ProviderNames {
+	for providerName := range cm.CompositionProcessor.ProviderNames {
 		dependency := xpmetav1alpha1.Dependency{
 			Provider: ptrFromString(fmt.Sprintf("xpkg.upbound.io/upbound/%s", providerName)),
-			Version:  fmt.Sprintf(">=%s", cm.familyVersion),
+			Version:  fmt.Sprintf(">=%s", cm.FamilyVersion),
 		}
 		convertedList = append(convertedList, dependency)
 	}
@@ -159,7 +157,7 @@ func (cm *ConfigMetaParameters) ConfigurationMetadataV1Alpha1(c *xpmetav1alpha1.
 }
 
 func (cp *ConfigPkgParameters) ConfigurationPackageV1(pkg *xppkgv1.Configuration) error {
-	pkg.Spec.Package = fmt.Sprintf("%s/%s:%s", cp.regorg, cp.packageName, cp.familyVersion)
+	pkg.Spec.Package = cp.PackageURL
 	return nil
 }
 
