@@ -23,6 +23,7 @@ import (
 	xpmetav1alpha1 "github.com/crossplane/crossplane/apis/pkg/meta/v1alpha1"
 	xppkgv1 "github.com/crossplane/crossplane/apis/pkg/v1"
 	xppkgv1beta1 "github.com/crossplane/crossplane/apis/pkg/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/upbound/upjet/pkg/migration"
@@ -79,6 +80,8 @@ var (
 			"name": "sample-pc",
 		},
 	}
+
+	ap = xppkgv1.ManualActivation
 )
 
 func TestGetSSOPNameFromManagedResource(t *testing.T) {
@@ -557,6 +560,150 @@ func TestPackageLockV1Beta1(t *testing.T) {
 				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
 			}
 			if diff := cmp.Diff(tc.want.lock, tc.args.lock); diff != "" {
+				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestPackagePkgFamilyConfigParameters_ProviderPackageV1(t *testing.T) {
+	type args struct {
+		p xppkgv1.Provider
+	}
+	type want struct {
+		providers []xppkgv1.Provider
+		err       error
+	}
+
+	cases := map[string]struct {
+		args
+		want
+	}{
+		"AWSConf": {
+			args: args{
+				p: xppkgv1.Provider{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "provider-aws",
+					},
+					Spec: xppkgv1.ProviderSpec{
+						PackageSpec: xppkgv1.PackageSpec{
+							Package:                  "xpkg.upbound.io/upbound/provider-aws:v0.33.0",
+							RevisionActivationPolicy: &ap,
+						},
+					},
+				},
+			},
+			want: want{
+				providers: []xppkgv1.Provider{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "provider-family-aws",
+						},
+						Spec: xppkgv1.ProviderSpec{
+							PackageSpec: xppkgv1.PackageSpec{
+								Package:                  "xpkg.upbound.io/upbound/provider-family-aws:v0.37.0",
+								RevisionActivationPolicy: &ap,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			pc := PackagePkgFamilyConfigParameters{
+				FamilyVersion: "v0.37.0",
+			}
+			providers, err := pc.ProviderPackageV1(tc.args.p)
+			if diff := cmp.Diff(tc.want.err, err); diff != "" {
+				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
+			}
+			if diff := cmp.Diff(tc.want.providers, providers); diff != "" {
+				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestPackagePkgFamilyParameters_ProviderPackageV1(t *testing.T) {
+	type args struct {
+		p xppkgv1.Provider
+	}
+	type want struct {
+		providers []xppkgv1.Provider
+		err       error
+	}
+
+	cases := map[string]struct {
+		args
+		want
+	}{
+		"AWSFamily": {
+			args: args{
+				p: xppkgv1.Provider{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "provider-aws",
+					},
+					Spec: xppkgv1.ProviderSpec{
+						PackageSpec: xppkgv1.PackageSpec{
+							Package:                  "xpkg.upbound.io/upbound/provider-aws:v0.33.0",
+							RevisionActivationPolicy: &ap,
+						},
+					},
+				},
+			},
+			want: want{
+				providers: []xppkgv1.Provider{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "provider-aws-ec2",
+						},
+						Spec: xppkgv1.ProviderSpec{
+							PackageSpec: xppkgv1.PackageSpec{
+								Package:                  "xpkg.upbound.io/upbound/provider-aws-ec2:v0.37.0",
+								RevisionActivationPolicy: &ap,
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "provider-aws-eks",
+						},
+						Spec: xppkgv1.ProviderSpec{
+							PackageSpec: xppkgv1.PackageSpec{
+								Package:                  "xpkg.upbound.io/upbound/provider-aws-eks:v0.37.0",
+								RevisionActivationPolicy: &ap,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			cp := NewCompositionPreProcessor()
+			cp.ProviderNames = map[string]struct{}{
+				"provider-family-aws": {},
+				"provider-aws-ec2":    {},
+				"provider-aws-eks":    {},
+			}
+			pc := PackagePkgFamilyParameters{
+				FamilyVersion:        "v0.37.0",
+				Monolith:             "provider-aws",
+				CompositionProcessor: cp,
+			}
+			providers, err := pc.ProviderPackageV1(tc.args.p)
+			if diff := cmp.Diff(tc.want.err, err); diff != "" {
+				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
+			}
+			sort.Slice(providers, func(i, j int) bool {
+				return strings.Compare(providers[i].Spec.PackageSpec.Package, providers[j].Spec.PackageSpec.Package) == -1
+			})
+			if diff := cmp.Diff(tc.want.providers, providers); diff != "" {
 				t.Errorf("\nNext(...): -want, +got:\n%s", diff)
 			}
 		})

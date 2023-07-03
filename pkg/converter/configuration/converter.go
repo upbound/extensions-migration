@@ -18,6 +18,7 @@ package configuration
 
 import (
 	"fmt"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strings"
 
 	xpmetav1 "github.com/crossplane/crossplane/apis/pkg/meta/v1"
@@ -170,6 +171,66 @@ func (l *LockParameters) PackageLockV1Beta1(lock *xppkgv1beta1.Lock) error {
 	return nil
 }
 
+type PackagePkgFamilyConfigParameters struct {
+	FamilyVersion string
+}
+
+func (pc *PackagePkgFamilyConfigParameters) ProviderPackageV1(p xppkgv1.Provider) ([]xppkgv1.Provider, error) {
+	ap := xppkgv1.ManualActivation
+	provider := extractProviderNameFromPackageName(p.Spec.PackageSpec.Package)
+	switch provider {
+	case "provider-aws":
+		provider = "provider-family-aws"
+	case "provider-gcp":
+		provider = "provider-family-gcp"
+	case "provider-azure":
+		provider = "provider-family-azure"
+	default:
+	}
+
+	p.ObjectMeta.Name = provider
+	p.Spec.PackageSpec = xppkgv1.PackageSpec{
+		Package:                  fmt.Sprintf("%s/%s:%s", "xpkg.upbound.io/upbound", provider, pc.FamilyVersion),
+		RevisionActivationPolicy: &ap,
+	}
+
+	return []xppkgv1.Provider{p}, nil
+}
+
+type PackagePkgFamilyParameters struct {
+	FamilyVersion        string
+	Monolith             string
+	CompositionProcessor *compositionPreProcessor
+}
+
+func (pf *PackagePkgFamilyParameters) ProviderPackageV1(p xppkgv1.Provider) ([]xppkgv1.Provider, error) {
+	ap := xppkgv1.ManualActivation
+	var providers []xppkgv1.Provider
+	for providerName := range pf.CompositionProcessor.ProviderNames {
+		if providerName == "provider-family-aws" || providerName == "provider-family-azure" || providerName == "provider-family-gcp" {
+			continue
+		}
+		if extractProviderNameFromPackageName(p.Spec.PackageSpec.Package) == pf.Monolith {
+			providers = append(providers, xppkgv1.Provider{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: providerName,
+				},
+				Spec: xppkgv1.ProviderSpec{
+					PackageSpec: xppkgv1.PackageSpec{
+						Package:                  fmt.Sprintf("%s/%s:%s", "xpkg.upbound.io/upbound", providerName, pf.FamilyVersion),
+						RevisionActivationPolicy: &ap,
+					},
+				},
+			})
+		}
+	}
+	return providers, nil
+}
+
 func ptrFromString(s string) *string {
 	return &s
+}
+
+func extractProviderNameFromPackageName(packageName string) string {
+	return strings.Split(strings.Split(packageName, "/")[2], ":")[0]
 }
