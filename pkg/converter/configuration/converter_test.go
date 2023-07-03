@@ -613,7 +613,7 @@ func TestPackagePkgFamilyConfigParameters_ProviderPackageV1(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			pc := PackagePkgFamilyConfigParameters{
+			pc := ProviderPkgFamilyConfigParameters{
 				FamilyVersion: "v0.37.0",
 			}
 			providers, err := pc.ProviderPackageV1(tc.args.p)
@@ -691,7 +691,7 @@ func TestPackagePkgFamilyParameters_ProviderPackageV1(t *testing.T) {
 				"provider-aws-ec2":    {},
 				"provider-aws-eks":    {},
 			}
-			pc := PackagePkgFamilyParameters{
+			pc := ProviderPkgFamilyParameters{
 				FamilyVersion:        "v0.37.0",
 				Monolith:             "provider-aws",
 				CompositionProcessor: cp,

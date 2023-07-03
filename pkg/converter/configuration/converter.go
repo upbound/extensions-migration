@@ -171,11 +171,11 @@ func (l *LockParameters) PackageLockV1Beta1(lock *xppkgv1beta1.Lock) error {
 	return nil
 }
 
-type PackagePkgFamilyConfigParameters struct {
+type ProviderPkgFamilyConfigParameters struct {
 	FamilyVersion string
 }
 
-func (pc *PackagePkgFamilyConfigParameters) ProviderPackageV1(p xppkgv1.Provider) ([]xppkgv1.Provider, error) {
+func (pc *ProviderPkgFamilyConfigParameters) ProviderPackageV1(p xppkgv1.Provider) ([]xppkgv1.Provider, error) {
 	ap := xppkgv1.ManualActivation
 	provider := extractProviderNameFromPackageName(p.Spec.PackageSpec.Package)
 	switch provider {
@@ -197,13 +197,13 @@ func (pc *PackagePkgFamilyConfigParameters) ProviderPackageV1(p xppkgv1.Provider
 	return []xppkgv1.Provider{p}, nil
 }
 
-type PackagePkgFamilyParameters struct {
+type ProviderPkgFamilyParameters struct {
 	FamilyVersion        string
 	Monolith             string
 	CompositionProcessor *compositionPreProcessor
 }
 
-func (pf *PackagePkgFamilyParameters) ProviderPackageV1(p xppkgv1.Provider) ([]xppkgv1.Provider, error) {
+func (pf *ProviderPkgFamilyParameters) ProviderPackageV1(p xppkgv1.Provider) ([]xppkgv1.Provider, error) {
 	ap := xppkgv1.ManualActivation
 	var providers []xppkgv1.Provider
 	for providerName := range pf.CompositionProcessor.ProviderNames {

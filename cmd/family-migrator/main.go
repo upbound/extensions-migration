@@ -73,6 +73,34 @@ func main() {
 	r.RegisterConfigurationPackageConverter(regexp.MustCompile(opts.SourceConfigurationPackage), &configuration.ConfigPkgParameters{
 		PackageURL: opts.TargetConfigurationPackage,
 	})
+	// TODO: should we also handle missing registry (xpkg.upbound.io),
+	// i.e., is it the default?
+	// register converters for the family config packages
+	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-aws:.+`), &configuration.ProviderPkgFamilyConfigParameters{
+		FamilyVersion: opts.AWSFamilyVersion,
+	})
+	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-azure:.+`), &configuration.ProviderPkgFamilyConfigParameters{
+		FamilyVersion: opts.AzureFamilyVersion,
+	})
+	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-gcp:.+`), &configuration.ProviderPkgFamilyConfigParameters{
+		FamilyVersion: opts.GCPFamilyVersion,
+	})
+	// register converters for the family resource packages
+	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-aws:.+`), &configuration.ProviderPkgFamilyParameters{
+		FamilyVersion:        opts.AWSFamilyVersion,
+		Monolith:             "provider-aws",
+		CompositionProcessor: cp,
+	})
+	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-azure:.+`), &configuration.ProviderPkgFamilyParameters{
+		FamilyVersion:        opts.AzureFamilyVersion,
+		Monolith:             "provider-azure",
+		CompositionProcessor: cp,
+	})
+	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-gcp:.+`), &configuration.ProviderPkgFamilyParameters{
+		FamilyVersion:        opts.GCPFamilyVersion,
+		Monolith:             "provider-gcp",
+		CompositionProcessor: cp,
+	})
 	r.RegisterPackageLockConverter(migration.CrossplaneLockName, &configuration.LockParameters{})
 	kongCtx.FatalIfErrorf(r.AddCompositionTypes(), "Failed to register the Crossplane Composition types with the migration registry")
 
