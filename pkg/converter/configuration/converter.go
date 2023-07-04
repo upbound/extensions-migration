@@ -103,7 +103,9 @@ type ConfigPkgParameters struct {
 	PackageURL string
 }
 
-type LockParameters struct{}
+type LockParameters struct {
+	PackageURL string
+}
 
 func (cm *ConfigMetaParameters) ConfigurationMetadataV1(c *xpmetav1.Configuration) error {
 	var convertedList []xpmetav1.Dependency
@@ -163,9 +165,10 @@ func (cp *ConfigPkgParameters) ConfigurationPackageV1(pkg *xppkgv1.Configuration
 func (l *LockParameters) PackageLockV1Beta1(lock *xppkgv1beta1.Lock) error {
 	packages := make([]xppkgv1beta1.LockPackage, 0, len(lock.Packages))
 	for _, lp := range lock.Packages {
-		if lp.Source != awsPackage && lp.Source != azurePackage && lp.Source != gcpPackage {
-			packages = append(packages, lp)
+		if lp.Type == xppkgv1beta1.ConfigurationPackageType && strings.Join([]string{lp.Source, lp.Version}, ":") == l.PackageURL {
+			continue
 		}
+		packages = append(packages, lp)
 	}
 	lock.Packages = packages
 	return nil

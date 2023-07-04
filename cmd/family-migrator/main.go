@@ -113,7 +113,9 @@ func main() {
 		Monolith:             "provider-gcp",
 		CompositionProcessor: cp,
 	})
-	r.RegisterPackageLockConverter(migration.CrossplaneLockName, &configuration.LockParameters{})
+	r.RegisterPackageLockConverter(migration.CrossplaneLockName, &configuration.LockParameters{
+		PackageURL: opts.SourceConfigurationPackage,
+	})
 	kongCtx.FatalIfErrorf(r.AddCompositionTypes(), "Failed to register the Crossplane Composition types with the migration registry")
 
 	fsSource, err := migration.NewFileSystemSource(opts.PackageRoot)
