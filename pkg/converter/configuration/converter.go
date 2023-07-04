@@ -192,7 +192,7 @@ func (pc *ProviderPkgFamilyConfigParameters) ProviderPackageV1(s xppkgv1.Provide
 	}
 
 	p := xppkgv1.Provider{}
-	p.ObjectMeta.Name = provider
+	p.ObjectMeta.Name = fmt.Sprintf("upbound-%s", provider)
 	p.Spec.PackageSpec = xppkgv1.PackageSpec{
 		Package:                  fmt.Sprintf("%s/%s:%s", "xpkg.upbound.io/upbound", provider, pc.FamilyVersion),
 		RevisionActivationPolicy: &ap,
@@ -217,7 +217,7 @@ func (pf *ProviderPkgFamilyParameters) ProviderPackageV1(p xppkgv1.Provider) ([]
 		if extractProviderNameFromPackageName(p.Spec.PackageSpec.Package) == pf.Monolith {
 			providers = append(providers, xppkgv1.Provider{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: providerName,
+					Name: fmt.Sprintf("upbound-%s", providerName),
 				},
 				Spec: xppkgv1.ProviderSpec{
 					PackageSpec: xppkgv1.PackageSpec{
