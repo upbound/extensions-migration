@@ -30,9 +30,10 @@ import (
 )
 
 const (
-	awsPackage   = "xpkg.upbound.io/upbound/provider-aws"
-	azurePackage = "xpkg.upbound.io/upbound/provider-azure"
-	gcpPackage   = "xpkg.upbound.io/upbound/provider-gcp"
+	prefixFamilyConfig = "provider-family-"
+	awsPackage         = "xpkg.upbound.io/upbound/provider-aws"
+	azurePackage       = "xpkg.upbound.io/upbound/provider-azure"
+	gcpPackage         = "xpkg.upbound.io/upbound/provider-gcp"
 )
 
 type mRPreProcessor struct {
@@ -85,9 +86,9 @@ func getProviderAndServiceName(name string) []string {
 	parts := strings.Split(name, ".")
 	switch len(parts) {
 	case 4:
-		return []string{fmt.Sprintf("provider-%s-%s", parts[1], parts[0]), fmt.Sprintf("provider-family-%s", parts[1])}
+		return []string{fmt.Sprintf("provider-%s-%s", parts[1], parts[0]), fmt.Sprintf("%s%s", prefixFamilyConfig, parts[1])}
 	case 3:
-		return []string{fmt.Sprintf("provider-family-%s", parts[0])}
+		return []string{fmt.Sprintf("%s%s", prefixFamilyConfig, parts[0])}
 	default:
 		return nil
 	}
@@ -108,52 +109,91 @@ type LockParameters struct {
 }
 
 func (cm *ConfigMetaParameters) ConfigurationMetadataV1(c *xpmetav1.Configuration) error {
-	var convertedList []xpmetav1.Dependency
-
+	convertedList := make([]xpmetav1.Dependency, 0, len(c.Spec.DependsOn))
 	for _, provider := range c.Spec.DependsOn {
-		if *provider.Provider == fmt.Sprintf("xpkg.upbound.io/upbound/%s", cm.Monolith) {
+		if provider.Provider != nil && *provider.Provider != fmt.Sprintf("xpkg.upbound.io/upbound/%s", cm.Monolith) {
+			convertedList = append(convertedList, provider)
 			continue
 		}
-		convertedList = append(convertedList, provider)
+		for providerName := range cm.CompositionProcessor.ProviderNames {
+			if fmt.Sprintf("provider-%s", extractServiceProvider(providerName)) != cm.Monolith {
+				continue
+			}
+			convertedList = append(convertedList, xpmetav1.Dependency{
+				Provider: ptrFromString(fmt.Sprintf("xpkg.upbound.io/upbound/%s", providerName)),
+				Version:  fmt.Sprintf(">=%s", cm.FamilyVersion),
+			})
+		}
 	}
-
-	for providerName := range cm.CompositionProcessor.ProviderNames {
-		if strings.HasPrefix(providerName, "provider-family-") {
+	// clean up family providers if there's at least one service provider
+	// belonging to the same family.
+	c.Spec.DependsOn = make([]xpmetav1.Dependency, 0, len(convertedList))
+	for _, p := range convertedList {
+		if p.Provider == nil || !strings.HasPrefix(extractProviderNameFromPackageName(*p.Provider), prefixFamilyConfig) {
+			c.Spec.DependsOn = append(c.Spec.DependsOn, p)
 			continue
 		}
-		dependency := xpmetav1.Dependency{
-			Provider: ptrFromString(fmt.Sprintf("xpkg.upbound.io/upbound/%s", providerName)),
-			Version:  fmt.Sprintf(">=%s", cm.FamilyVersion),
+		found := false
+		for _, s := range convertedList {
+			if p != s && extractServiceProvider(extractProviderNameFromPackageName(*p.Provider)) == extractServiceProvider(extractProviderNameFromPackageName(*s.Provider)) {
+				found = true
+				break
+			}
 		}
-		convertedList = append(convertedList, dependency)
+		if !found {
+			c.Spec.DependsOn = append(c.Spec.DependsOn, p)
+		}
 	}
-
-	c.Spec.DependsOn = convertedList
 	return nil
 }
 
+func extractServiceProvider(providerName string) string {
+	if strings.HasPrefix(providerName, prefixFamilyConfig) {
+		return strings.TrimPrefix(providerName, prefixFamilyConfig)
+	}
+	parts := strings.Split(providerName, "-")
+	if len(parts) < 2 {
+		return ""
+	}
+	return parts[1]
+}
+
 func (cm *ConfigMetaParameters) ConfigurationMetadataV1Alpha1(c *xpmetav1alpha1.Configuration) error {
-	var convertedList []xpmetav1alpha1.Dependency
-
+	convertedList := make([]xpmetav1alpha1.Dependency, 0, len(c.Spec.DependsOn))
 	for _, provider := range c.Spec.DependsOn {
-		if *provider.Provider == fmt.Sprintf("xpkg.upbound.io/upbound/%s", cm.Monolith) {
+		if provider.Provider != nil && *provider.Provider != fmt.Sprintf("xpkg.upbound.io/upbound/%s", cm.Monolith) {
+			convertedList = append(convertedList, provider)
 			continue
 		}
-		convertedList = append(convertedList, provider)
+		for providerName := range cm.CompositionProcessor.ProviderNames {
+			if fmt.Sprintf("provider-%s", extractServiceProvider(providerName)) != cm.Monolith {
+				continue
+			}
+			convertedList = append(convertedList, xpmetav1alpha1.Dependency{
+				Provider: ptrFromString(fmt.Sprintf("xpkg.upbound.io/upbound/%s", providerName)),
+				Version:  fmt.Sprintf(">=%s", cm.FamilyVersion),
+			})
+		}
 	}
-
-	for providerName := range cm.CompositionProcessor.ProviderNames {
-		if strings.HasPrefix(providerName, "provider-family-") {
+	// clean up family providers if there's at least one service provider
+	// belonging to the same family.
+	c.Spec.DependsOn = make([]xpmetav1alpha1.Dependency, 0, len(convertedList))
+	for _, p := range convertedList {
+		if p.Provider == nil || !strings.HasPrefix(extractProviderNameFromPackageName(*p.Provider), prefixFamilyConfig) {
+			c.Spec.DependsOn = append(c.Spec.DependsOn, p)
 			continue
 		}
-		dependency := xpmetav1alpha1.Dependency{
-			Provider: ptrFromString(fmt.Sprintf("xpkg.upbound.io/upbound/%s", providerName)),
-			Version:  fmt.Sprintf(">=%s", cm.FamilyVersion),
+		found := false
+		for _, s := range convertedList {
+			if p != s && extractServiceProvider(extractProviderNameFromPackageName(*p.Provider)) == extractServiceProvider(extractProviderNameFromPackageName(*s.Provider)) {
+				found = true
+				break
+			}
 		}
-		convertedList = append(convertedList, dependency)
+		if !found {
+			c.Spec.DependsOn = append(c.Spec.DependsOn, p)
+		}
 	}
-
-	c.Spec.DependsOn = convertedList
 	return nil
 }
 
