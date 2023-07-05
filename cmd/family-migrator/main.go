@@ -146,7 +146,7 @@ func setPkgParameters(plan *migration.Plan, opts Options) {
 			s.Exec.Args[1] = strings.ReplaceAll(s.Exec.Args[1], "{{PKG_PATH}}", opts.PackageOutput)
 			s.Exec.Args[1] = strings.ReplaceAll(s.Exec.Args[1], "{{PKG_ROOT}}", opts.PackageRoot)
 			s.Exec.Args[1] = strings.ReplaceAll(s.Exec.Args[1], "{{EXAMPLES_ROOT}}", opts.ExamplesRoot)
-			migration.AddExecStepManualExecution(&s)
+			migration.AddManualExecution(&s)
 			plan.Spec.Steps[i] = s
 		}
 	}
