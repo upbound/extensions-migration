@@ -126,7 +126,7 @@ func main() {
 		kongCtx.FatalIfErrorf(err, "Failed to get user's home")
 		opts.KubeConfig = filepath.Join(homeDir, defaultKubeConfig)
 	}
-	kubeSource, err := migration.NewKubernetesSourceFromKubeConfig(opts.KubeConfig, migration.WithRegistry(r) /*migration.WithCategories([]migration.Category{migration.CategoryManaged})*/)
+	kubeSource, err := migration.NewKubernetesSourceFromKubeConfig(opts.KubeConfig, migration.WithRegistry(r), migration.WithCategories([]migration.Category{migration.CategoryManaged}))
 	kongCtx.FatalIfErrorf(err, "Failed to initialize the migration Kubernetes source from kubeconfig: %s", opts.KubeConfig)
 	pg := migration.NewPlanGenerator(r, nil, migration.NewFileSystemTarget(), migration.WithEnableConfigurationMigrationSteps(), migration.WithMultipleSources(fsSource, kubeSource), migration.WithSkipGVKs(schema.GroupVersionKind{}))
 	kongCtx.FatalIfErrorf(pg.GeneratePlan(), "Failed to generate the migration plan for the provider families")
