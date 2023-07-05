@@ -30,6 +30,10 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
+const (
+	awsPackage = "xpkg.upbound.io/upbound/provider-aws"
+)
+
 var (
 	unstructuredAwsVpc = map[string]interface{}{
 		"apiVersion": "ec2.aws.upbound.io/v1beta1",

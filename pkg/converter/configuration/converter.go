@@ -31,9 +31,6 @@ import (
 
 const (
 	prefixFamilyConfig = "provider-family-"
-	awsPackage         = "xpkg.upbound.io/upbound/provider-aws"
-	azurePackage       = "xpkg.upbound.io/upbound/provider-azure"
-	gcpPackage         = "xpkg.upbound.io/upbound/provider-gcp"
 )
 
 type mRPreProcessor struct {
@@ -251,6 +248,9 @@ func (pf *ProviderPkgFamilyParameters) ProviderPackageV1(p xppkgv1.Provider) ([]
 	ap := xppkgv1.ManualActivation
 	var providers []xppkgv1.Provider
 	for providerName := range pf.CompositionProcessor.ProviderNames {
+		if fmt.Sprintf("provider-%s", extractServiceProvider(providerName)) != pf.Monolith {
+			continue
+		}
 		if providerName == "provider-family-aws" || providerName == "provider-family-azure" || providerName == "provider-family-gcp" {
 			continue
 		}
