@@ -42,10 +42,10 @@ type Options struct {
 	GCPFamilyVersion           string `name:"gcp-family-version" required:"" help:"Version of the GCP provider family."`
 	SourceConfigurationPackage string `name:"source-configuration-package" required:"" help:"Migration source Configuration package's URL."`
 	TargetConfigurationPackage string `name:"target-configuration-package" required:"" help:"Migration target Configuration package's URL."`
-	Output                     string `name:"output" required:"" help:"Migration plan output path."`
+	Output                     string `name:"output" default:"migration-plan.yaml" help:"Migration plan output path."`
 
-	PackageRoot   string `name:"package-root" default:"." help:"Source directory for the Crossplane Configuration package."`
-	ExamplesRoot  string `name:"examples-root" default:"./examples" help:"Path to Crossplane package examples directory."`
+	PackageRoot   string `name:"package-root" default:"package" help:"Source directory for the Crossplane Configuration package."`
+	ExamplesRoot  string `name:"examples-root" default:"package/examples" help:"Path to Crossplane package examples directory."`
 	PackageOutput string `name:"package-output" default:"updated-configuration.pkg" help:"Path to store the updated configuration package."`
 
 	KubeConfig string `name:"kubeconfig" optional:"" help:"Path to the kubeconfig to use."`
@@ -128,7 +128,9 @@ func main() {
 	}
 	kubeSource, err := migration.NewKubernetesSourceFromKubeConfig(opts.KubeConfig, migration.WithRegistry(r), migration.WithCategories([]migration.Category{migration.CategoryManaged}))
 	kongCtx.FatalIfErrorf(err, "Failed to initialize the migration Kubernetes source from kubeconfig: %s", opts.KubeConfig)
-	pg := migration.NewPlanGenerator(r, nil, migration.NewFileSystemTarget(), migration.WithEnableConfigurationMigrationSteps(), migration.WithMultipleSources(fsSource, kubeSource), migration.WithSkipGVKs(schema.GroupVersionKind{}))
+	absPath, err := filepath.Abs(opts.Output)
+	kongCtx.FatalIfErrorf(err, "Failed to get the absolute path for the migration plan output: %s", opts.Output)
+	pg := migration.NewPlanGenerator(r, nil, migration.NewFileSystemTarget(migration.WithParentDirectory(filepath.Dir(absPath))), migration.WithEnableConfigurationMigrationSteps(), migration.WithMultipleSources(fsSource, kubeSource), migration.WithSkipGVKs(schema.GroupVersionKind{}))
 	kongCtx.FatalIfErrorf(pg.GeneratePlan(), "Failed to generate the migration plan for the provider families")
 	setPkgParameters(&pg.Plan, *opts)
 	buff, err := yaml.Marshal(pg.Plan)
