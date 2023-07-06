@@ -16,6 +16,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"os"
@@ -204,12 +205,12 @@ func (cb *executionCallback) StepToExecute(s migration.Step, index int) migratio
 	return migration.CallbackResult{Action: migration.ActionContinue}
 }
 
-func (cb *executionCallback) StepSucceeded(s migration.Step, index int, buff []byte) migration.CallbackResult {
-	cb.logger.Info("Step succeeded", "output", string(buff), "index", index, "name", s.Name)
+func (cb *executionCallback) StepSucceeded(s migration.Step, index int, diagnostics any) migration.CallbackResult {
+	cb.logger.Info("Step succeeded", "diagnostics", fmt.Sprintf("%s", diagnostics), "index", index, "name", s.Name)
 	return migration.CallbackResult{Action: migration.ActionContinue}
 }
 
-func (cb *executionCallback) StepFailed(s migration.Step, index int, buff []byte, err error) migration.CallbackResult {
-	cb.logger.Info("Step failed", "output", string(buff), "index", index, "name", s.Name, "err", err)
+func (cb *executionCallback) StepFailed(s migration.Step, index int, diagnostics any, err error) migration.CallbackResult {
+	cb.logger.Info("Step failed", "diagnostics", fmt.Sprintf("%s", diagnostics), "index", index, "name", s.Name, "err", err)
 	return migration.CallbackResult{Action: migration.ActionCancel}
 }
