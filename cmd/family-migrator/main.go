@@ -166,11 +166,14 @@ func executePlan(kongCtx *kong.Context, planDir string, opts *Options) {
 	kongCtx.FatalIfErrorf(err, "Failed to read the migration plan from path: %s", opts.PlanPath)
 	kongCtx.FatalIfErrorf(yaml.Unmarshal(buff, plan), "Failed to unmarshal the migration plan: %s", opts.PlanPath)
 	zl := zap.New(zap.UseDevMode(opts.Debug))
-	log := logging.NewLogrLogger(zl.WithName("family-migrator"))
+	log := logging.NewLogrLogger(zl.WithName("fork-executor"))
 	executor := migration.NewForkExecutor(migration.WithWorkingDir(planDir), migration.WithLogger(log))
 	// TODO: we need to load the plan back from the filesystem as it may
 	// have been modified.
-	planExecutor := migration.NewPlanExecutor(*plan, executor)
+	planExecutor := migration.NewPlanExecutor(*plan, []migration.Executor{executor},
+		migration.WithExecutorCallback(&executionCallback{
+			logger: logging.NewLogrLogger(zl.WithName("family-migrator")),
+		}))
 	backupDir := filepath.Join(planDir, "backup")
 	kongCtx.FatalIfErrorf(os.MkdirAll(backupDir, 0o700), "Failed to mkdir backup directory: %s", backupDir)
 	kongCtx.FatalIfErrorf(planExecutor.Execute(), "Failed to execute the migration plan at path: %s", opts.PlanPath)
@@ -190,4 +193,23 @@ func setPkgParameters(plan *migration.Plan, opts Options) {
 			plan.Spec.Steps[i] = s
 		}
 	}
+}
+
+type executionCallback struct {
+	logger logging.Logger
+}
+
+func (cb *executionCallback) StepToExecute(s migration.Step, index int) migration.CallbackResult {
+	cb.logger.Info("Executing step...", "index", index, "name", s.Name)
+	return migration.CallbackResult{Action: migration.ActionContinue}
+}
+
+func (cb *executionCallback) StepSucceeded(s migration.Step, index int, buff []byte) migration.CallbackResult {
+	cb.logger.Info("Step succeeded", "output", string(buff), "index", index, "name", s.Name)
+	return migration.CallbackResult{Action: migration.ActionContinue}
+}
+
+func (cb *executionCallback) StepFailed(s migration.Step, index int, buff []byte, err error) migration.CallbackResult {
+	cb.logger.Info("Step failed", "output", string(buff), "index", index, "name", s.Name, "err", err)
+	return migration.CallbackResult{Action: migration.ActionCancel}
 }
