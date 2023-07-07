@@ -86,6 +86,7 @@ func main() {
 			Summary:   true,
 		}))
 
+	getCommonInputs(kongCtx, opts)
 	absPath, err := filepath.Abs(opts.PlanPath)
 	kongCtx.FatalIfErrorf(err, "Failed to get the absolute path for the migration plan output: %s", opts.PlanPath)
 	planDir := filepath.Dir(absPath)
@@ -93,12 +94,9 @@ func main() {
 	switch kongCtx.Command() {
 	case "generate":
 		getGenerateInputs(kongCtx, opts)
-		getCommonInputs(kongCtx, opts)
 		generatePlan(kongCtx, opts, planDir)
 	case "execute":
-		getCommonInputs(kongCtx, opts)
-		stepByStep := askExecutionSteps(kongCtx, opts)
-		executePlan(kongCtx, planDir, opts, stepByStep)
+		executePlan(kongCtx, planDir, opts)
 	}
 }
 
@@ -180,20 +178,22 @@ func generatePlan(kongCtx *kong.Context, opts *Options, planDir string) {
 
 	var moveExecution bool
 	moveExecutionPhaseQuestion := &survey.Confirm{
-		Message: "The migration plan was generated. Would you like to proceed to the execution phase?",
+		Message: fmt.Sprintf("The migration plan has been generated at path: %s. The referred resource manifests and the patch documents can be found under: %s.\n"+
+			"Would you like to proceed to the execution phase?", opts.PlanPath, planDir),
 	}
 	kongCtx.FatalIfErrorf(survey.AskOne(moveExecutionPhaseQuestion, &moveExecution))
 	if moveExecution {
-		stepByStep := askExecutionSteps(kongCtx, opts)
-		executePlan(kongCtx, planDir, opts, stepByStep)
+		executePlan(kongCtx, planDir, opts)
 	}
 }
 
-func executePlan(kongCtx *kong.Context, planDir string, opts *Options, stepByStep bool) {
+func executePlan(kongCtx *kong.Context, planDir string, opts *Options) {
 	plan := &migration.Plan{}
 	buff, err := os.ReadFile(opts.PlanPath)
 	kongCtx.FatalIfErrorf(err, "Failed to read the migration plan from path: %s", opts.PlanPath)
 	kongCtx.FatalIfErrorf(yaml.Unmarshal(buff, plan), "Failed to unmarshal the migration plan: %s", opts.PlanPath)
+
+	stepByStep := askExecutionSteps(kongCtx, plan, opts, planDir)
 	zl := zap.New(zap.UseDevMode(opts.Debug))
 	log := logging.NewLogrLogger(zl.WithName("fork-executor"))
 	executor := migration.NewForkExecutor(migration.WithWorkingDir(planDir), migration.WithLogger(log))
@@ -313,34 +313,34 @@ func getGenerateInputs(kongCtx *kong.Context, opts *Options) {
 }
 
 func getCommonInputs(kongCtx *kong.Context, opts *Options) {
-	outputQuestion := &survey.Input{
-		Message: "Please specify the output path for the migration plan",
+	if opts.PlanPath == "" {
+		outputQuestion := &survey.Input{
+			Message: "Please specify the path for the migration plan",
+		}
+		kongCtx.FatalIfErrorf(survey.AskOne(outputQuestion, &opts.PlanPath))
 	}
-	kongCtx.FatalIfErrorf(survey.AskOne(outputQuestion, &opts.PlanPath))
 }
 
-func askExecutionSteps(kongCtx *kong.Context, opts *Options) bool {
+func askExecutionSteps(kongCtx *kong.Context, plan *migration.Plan, opts *Options, planDir string) bool {
 	var isReviewed bool
 	reviewMigration := &survey.Confirm{
-		Message: fmt.Sprintf("The migration file is here: %s "+
+		Message: fmt.Sprintf("The migration file is here: %s. The referred resource manifests and the patch documents can be found under: %s. "+
 			"Please review the migraiton plan and continue to the execution step.\n"+
-			"Did you review the generated migration plan?", opts.PlanPath),
+			"Did you review the generated migration plan?", opts.PlanPath, planDir),
 	}
 	kongCtx.FatalIfErrorf(survey.AskOne(reviewMigration, &isReviewed))
 
 	var displaySteps bool
 	manualExecutionSteps := &survey.Confirm{
-		Message: "The migration plan has manualExecution instructions." +
-			"Do you want the instructions listed?",
+		Message: "The migration plan has manualExecution instructions. " +
+			"Do you want the instructions to be listed?",
 	}
 	kongCtx.FatalIfErrorf(survey.AskOne(manualExecutionSteps, &displaySteps))
 	if displaySteps {
-		plan := &migration.Plan{}
-		buff, err := os.ReadFile(opts.PlanPath)
-		kongCtx.FatalIfErrorf(err, "Failed to read the migration plan from path: %s", opts.PlanPath)
-		kongCtx.FatalIfErrorf(yaml.Unmarshal(buff, plan), "Failed to unmarshal the migration plan: %s", opts.PlanPath)
 		for _, s := range plan.Spec.Steps {
-			fmt.Println(s.ManualExecution)
+			for _, c := range s.ManualExecution {
+				fmt.Println(c)
+			}
 		}
 	}
 
@@ -367,11 +367,16 @@ type executionCallback struct {
 
 func (cb *executionCallback) StepToExecute(s migration.Step, index int) migration.CallbackResult {
 	var executionChoice string
+	buff := strings.Builder{}
+	for _, c := range s.ManualExecution {
+		buff.WriteString(c)
+		buff.WriteString("\n")
+	}
 	executionChoiceQuestion := &survey.Select{
-		Message: fmt.Sprintf("Step to execute: %s\n"+
-			"What is your execution preference?", s.ManualExecution),
-		Help: "Automatically: Command will be executed automatically and output will be shown.\n" +
-			"Manually: Command will not be executed and you will be prompted for confirmation that you have run the command.\n" +
+		Message: fmt.Sprintf("Step (with name %q at index %d) to execute:\n%s\n"+
+			"What is your execution preference?", s.Name, index, buff.String()),
+		Help: "Automatically: Commands will be executed automatically and the output will be shown.\n" +
+			"Manually: Commands will not be executed and you will be prompted for confirmation that you have successfully run the command.\n" +
 			"Skip: This step will be skipped.",
 		Options: []string{
 			automaticallyChoice,
@@ -395,7 +400,7 @@ func (cb *executionCallback) StepToExecute(s migration.Step, index int) migratio
 				return migration.CallbackResult{Action: migration.ActionCancel}
 			}
 		}
-		return migration.CallbackResult{Action: migration.ActionContinue}
+		return migration.CallbackResult{Action: migration.ActionSkip}
 	case skipChoice:
 		cb.logger.Info("Execution of this step skipped", "index", index, "name", s.Name)
 		return migration.CallbackResult{Action: migration.ActionSkip}
