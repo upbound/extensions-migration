@@ -3,6 +3,7 @@ module github.com/upbound/extensions-migration
 go 1.19
 
 require (
+	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/alecthomas/kong v0.7.1
 	github.com/crossplane/crossplane v1.10.0
 	github.com/crossplane/crossplane-runtime v0.20.0-rc.0.0.20230406155702-4e1673b7141f
@@ -40,8 +41,12 @@ require (
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
+	github.com/mattn/go-colorable v0.1.12 // indirect
+	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
+	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect

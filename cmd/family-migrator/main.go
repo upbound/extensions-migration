@@ -17,48 +17,62 @@ package main
 
 import (
 	"fmt"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"os"
 	"path/filepath"
 	"regexp"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"strings"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/alecthomas/kong"
+	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/upbound/upjet/pkg/migration"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/upbound/extensions-migration/pkg/converter/configuration"
 )
 
 const (
 	defaultKubeConfig = ".kube/config"
+
+	stepByStepChoice    = "Step-by-Step"
+	noInteractionChoice = "No Interaction"
+
+	automaticallyChoice = "Automatically"
+	manuallyChoice      = "Manually"
+	skipChoice          = "Skip"
+	retryChoice         = "Retry"
+	cancelChoice        = "Cancel"
+
+	providerAwsChoice   = "provider-aws"
+	providerAzureChoice = "provider-azure"
+	providerGcpChoice   = "provider-gcp"
 )
 
 // Options represents the available options for the family-migrator.
 type Options struct {
 	Generate struct {
-		RegistryOrg                string `name:"regorg" required:"" default:"xpkg.upbound.io/upbound" help:"<registry host>/<organization> for the provider family packages."`
-		AWSFamilyVersion           string `name:"aws-family-version" required:"" help:"Version of the AWS provider family."`
-		AzureFamilyVersion         string `name:"azure-family-version" required:"" help:"Version of the Azure provider family."`
-		GCPFamilyVersion           string `name:"gcp-family-version" required:"" help:"Version of the GCP provider family."`
-		SourceConfigurationPackage string `name:"source-configuration-package" required:"" help:"Migration source Configuration package's URL."`
-		TargetConfigurationPackage string `name:"target-configuration-package" required:"" help:"Migration target Configuration package's URL."`
+		RegistryOrg                string `name:"regorg" help:"<registry host>/<organization> for the provider family packages."`
+		AWSFamilyVersion           string `name:"aws-family-version" help:"Version of the AWS provider family."`
+		AzureFamilyVersion         string `name:"azure-family-version" help:"Version of the Azure provider family."`
+		GCPFamilyVersion           string `name:"gcp-family-version" help:"Version of the GCP provider family."`
+		SourceConfigurationPackage string `name:"source-configuration-package" help:"Migration source Configuration package's URL." survey:"source-configuration-package"`
+		TargetConfigurationPackage string `name:"target-configuration-package" help:"Migration target Configuration package's URL." survey:"target-configuration-package"`
 
-		PackageRoot   string `name:"package-root" default:"package" help:"Source directory for the Crossplane Configuration package."`
-		ExamplesRoot  string `name:"examples-root" default:"package/examples" help:"Path to Crossplane package examples directory."`
-		PackageOutput string `name:"package-output" default:"updated-configuration.pkg" help:"Path to store the updated configuration package."`
+		PackageRoot   string `name:"package-root" help:"Source directory for the Crossplane Configuration package." survey:"package-root"`
+		ExamplesRoot  string `name:"examples-root" help:"Path to Crossplane package examples directory." survey:"examples-root"`
+		PackageOutput string `name:"package-output" help:"Path to store the updated configuration package." survey:"package-output"`
 
-		KubeConfig string `name:"kubeconfig" optional:"" help:"Path to the kubeconfig to use."`
+		KubeConfig string `name:"kubeconfig" help:"Path to the kubeconfig to use."`
 	} `kong:"cmd"`
 
 	Execute struct{} `kong:"cmd"`
 
-	PlanPath string `name:"plan-path" default:"migration-plan.yaml" help:"Migration plan output path."`
+	PlanPath string `name:"plan-path" help:"Migration plan output path." survey:"plan-path"`
 
-	Debug bool `name:"debug" short:"d" optional:"" help:"Run with debug logging."`
+	Debug bool `name:"debug" short:"d" help:"Run with debug logging."`
 }
 
 func main() {
@@ -78,9 +92,13 @@ func main() {
 
 	switch kongCtx.Command() {
 	case "generate":
+		getGenerateInputs(kongCtx, opts)
+		getCommonInputs(kongCtx, opts)
 		generatePlan(kongCtx, opts, planDir)
 	case "execute":
-		executePlan(kongCtx, planDir, opts)
+		getCommonInputs(kongCtx, opts)
+		stepByStep := askExecutionSteps(kongCtx, opts)
+		executePlan(kongCtx, planDir, opts, stepByStep)
 	}
 }
 
@@ -159,9 +177,19 @@ func generatePlan(kongCtx *kong.Context, opts *Options, planDir string) {
 	buff, err := yaml.Marshal(pg.Plan)
 	kongCtx.FatalIfErrorf(err, "Failed to marshal the migration plan to YAML")
 	kongCtx.FatalIfErrorf(os.WriteFile(opts.PlanPath, buff, 0600), "Failed to store the migration plan at path: %s", opts.PlanPath)
+
+	var moveExecution bool
+	moveExecutionPhaseQuestion := &survey.Confirm{
+		Message: "The migration plan was generated. Would you like to proceed to the execution phase?",
+	}
+	kongCtx.FatalIfErrorf(survey.AskOne(moveExecutionPhaseQuestion, &moveExecution))
+	if moveExecution {
+		stepByStep := askExecutionSteps(kongCtx, opts)
+		executePlan(kongCtx, planDir, opts, stepByStep)
+	}
 }
 
-func executePlan(kongCtx *kong.Context, planDir string, opts *Options) {
+func executePlan(kongCtx *kong.Context, planDir string, opts *Options, stepByStep bool) {
 	plan := &migration.Plan{}
 	buff, err := os.ReadFile(opts.PlanPath)
 	kongCtx.FatalIfErrorf(err, "Failed to read the migration plan from path: %s", opts.PlanPath)
@@ -171,10 +199,15 @@ func executePlan(kongCtx *kong.Context, planDir string, opts *Options) {
 	executor := migration.NewForkExecutor(migration.WithWorkingDir(planDir), migration.WithLogger(log))
 	// TODO: we need to load the plan back from the filesystem as it may
 	// have been modified.
-	planExecutor := migration.NewPlanExecutor(*plan, []migration.Executor{executor},
-		migration.WithExecutorCallback(&executionCallback{
-			logger: logging.NewLogrLogger(zl.WithName("family-migrator")),
-		}))
+	var planExecutor *migration.PlanExecutor
+	if stepByStep {
+		planExecutor = migration.NewPlanExecutor(*plan, []migration.Executor{executor},
+			migration.WithExecutorCallback(&executionCallback{
+				logger: logging.NewLogrLogger(zl.WithName("family-migrator")),
+			}))
+	} else {
+		planExecutor = migration.NewPlanExecutor(*plan, []migration.Executor{executor})
+	}
 	backupDir := filepath.Join(planDir, "backup")
 	kongCtx.FatalIfErrorf(os.MkdirAll(backupDir, 0o700), "Failed to mkdir backup directory: %s", backupDir)
 	kongCtx.FatalIfErrorf(planExecutor.Execute(), "Failed to execute the migration plan at path: %s", opts.PlanPath)
@@ -196,13 +229,180 @@ func setPkgParameters(plan *migration.Plan, opts Options) {
 	}
 }
 
+func getGenerateInputs(kongCtx *kong.Context, opts *Options) {
+	if opts.Generate.RegistryOrg == "" {
+		regOrgQuestion := &survey.Input{
+			Message: "Please provide the registry and organization for the provider family packages",
+			Help:    "Input Format: <registry host>/<organization> Example xpkg.upbound.io/upbound",
+		}
+		kongCtx.FatalIfErrorf(survey.AskOne(regOrgQuestion, &opts.Generate.RegistryOrg))
+	}
+
+	if opts.Generate.AWSFamilyVersion == "" && opts.Generate.AzureFamilyVersion == "" && opts.Generate.GCPFamilyVersion == "" {
+		var selectedProviders []string
+		providerSelection := &survey.MultiSelect{
+			Message: "Please select the providers that will be migrated",
+			Options: []string{
+				providerAwsChoice,
+				providerAzureChoice,
+				providerGcpChoice,
+			},
+		}
+		kongCtx.FatalIfErrorf(survey.AskOne(providerSelection, &selectedProviders))
+
+		for _, sp := range selectedProviders {
+			versionQuestion := &survey.Input{
+				Message: fmt.Sprintf("Please specify the version of the %s family.", sp),
+				Help:    "Example: v0.18.0",
+			}
+			switch sp {
+			case providerAwsChoice:
+				kongCtx.FatalIfErrorf(survey.AskOne(versionQuestion, &opts.Generate.AWSFamilyVersion))
+			case providerAzureChoice:
+				kongCtx.FatalIfErrorf(survey.AskOne(versionQuestion, &opts.Generate.AzureFamilyVersion))
+			case providerGcpChoice:
+				kongCtx.FatalIfErrorf(survey.AskOne(versionQuestion, &opts.Generate.GCPFamilyVersion))
+			}
+		}
+	}
+
+	var packageAndPathQuestions []*survey.Question
+	if opts.Generate.SourceConfigurationPackage == "" {
+		packageAndPathQuestions = append(packageAndPathQuestions, &survey.Question{
+			Name: "source-configuration-package",
+			Prompt: &survey.Input{
+				Message: "Please enter the URL of the migration source Configuration package",
+				Help:    "Example: xpkg.upbound.io/upbound/platform-ref-gcp:v0.3.0",
+			},
+		})
+	}
+	if opts.Generate.TargetConfigurationPackage == "" {
+		packageAndPathQuestions = append(packageAndPathQuestions, &survey.Question{
+			Name: "target-configuration-package",
+			Prompt: &survey.Input{
+				Message: "Please enter the URL of the migration target Configuration package",
+				Help:    "Example: xpkg.upbound.io/upbound/platform-ref-gcp:v0.4.0",
+			},
+		})
+	}
+	if opts.Generate.PackageRoot == "" {
+		packageAndPathQuestions = append(packageAndPathQuestions, &survey.Question{
+			Name: "package-root",
+			Prompt: &survey.Input{
+				Message: "Please specify the source directory for the Crossplane Configuration package",
+			},
+		})
+	}
+	if opts.Generate.ExamplesRoot == "" {
+		packageAndPathQuestions = append(packageAndPathQuestions, &survey.Question{
+			Name: "examples-root",
+			Prompt: &survey.Input{
+				Message: "Please specify the path to the directory containing the Crossplane package examples",
+			},
+		})
+	}
+	if opts.Generate.PackageOutput == "" {
+		packageAndPathQuestions = append(packageAndPathQuestions, &survey.Question{
+			Name: "package-output",
+			Prompt: &survey.Input{
+				Message: "Please specify the path to store the updated configuration package",
+			},
+		})
+	}
+	kongCtx.FatalIfErrorf(survey.Ask(packageAndPathQuestions, &opts.Generate))
+}
+
+func getCommonInputs(kongCtx *kong.Context, opts *Options) {
+	outputQuestion := &survey.Input{
+		Message: "Please specify the output path for the migration plan",
+	}
+	kongCtx.FatalIfErrorf(survey.AskOne(outputQuestion, &opts.PlanPath))
+}
+
+func askExecutionSteps(kongCtx *kong.Context, opts *Options) bool {
+	var isReviewed bool
+	reviewMigration := &survey.Confirm{
+		Message: fmt.Sprintf("The migration file is here: %s "+
+			"Please review the migraiton plan and continue to the execution step.\n"+
+			"Did you review the generated migration plan?", opts.PlanPath),
+	}
+	kongCtx.FatalIfErrorf(survey.AskOne(reviewMigration, &isReviewed))
+
+	var displaySteps bool
+	manualExecutionSteps := &survey.Confirm{
+		Message: "The migration plan has manualExecution instructions." +
+			"Do you want the instructions listed?",
+	}
+	kongCtx.FatalIfErrorf(survey.AskOne(manualExecutionSteps, &displaySteps))
+	if displaySteps {
+		plan := &migration.Plan{}
+		buff, err := os.ReadFile(opts.PlanPath)
+		kongCtx.FatalIfErrorf(err, "Failed to read the migration plan from path: %s", opts.PlanPath)
+		kongCtx.FatalIfErrorf(yaml.Unmarshal(buff, plan), "Failed to unmarshal the migration plan: %s", opts.PlanPath)
+		for _, s := range plan.Spec.Steps {
+			fmt.Println(s.ManualExecution)
+		}
+	}
+
+	var moveExecutionChoice string
+	moveExecutionChoiceQuestion := &survey.Select{
+		Message: "Do you want to execute the migration plan with step-by-step confirmation or no interaction",
+		Options: []string{
+			stepByStepChoice,
+			noInteractionChoice,
+		},
+	}
+	kongCtx.FatalIfErrorf(survey.AskOne(moveExecutionChoiceQuestion, &moveExecutionChoice))
+	switch moveExecutionChoice {
+	case stepByStepChoice:
+		return true
+	default: // "No Interaction"
+		return false
+	}
+}
+
 type executionCallback struct {
 	logger logging.Logger
 }
 
 func (cb *executionCallback) StepToExecute(s migration.Step, index int) migration.CallbackResult {
-	cb.logger.Info("Executing step...", "index", index, "name", s.Name)
-	return migration.CallbackResult{Action: migration.ActionContinue}
+	var executionChoice string
+	executionChoiceQuestion := &survey.Select{
+		Message: fmt.Sprintf("Step to execute: %s\n"+
+			"What is your execution preference?", s.ManualExecution),
+		Help: "Automatically: Command will be executed automatically and output will be shown.\n" +
+			"Manually: Command will not be executed and you will be prompted for confirmation that you have run the command.\n" +
+			"Skip: This step will be skipped.",
+		Options: []string{
+			automaticallyChoice,
+			manuallyChoice,
+			skipChoice,
+		},
+	}
+	if err := survey.AskOne(executionChoiceQuestion, &executionChoice); err != nil {
+		cb.logger.Info("Execution choice question could not ask or get answer", "index", index, "name", s.Name)
+		return migration.CallbackResult{Action: migration.ActionCancel}
+	}
+	switch executionChoice {
+	case manuallyChoice:
+		isDone := false
+		for !isDone {
+			reviewMigration := &survey.Confirm{
+				Message: "Manually execution was selected. Did you run the command?",
+			}
+			if err := survey.AskOne(reviewMigration, &isDone); err != nil {
+				cb.logger.Info("Manual execution confirmation could not get", "index", index, "name", s.Name)
+				return migration.CallbackResult{Action: migration.ActionCancel}
+			}
+		}
+		return migration.CallbackResult{Action: migration.ActionContinue}
+	case skipChoice:
+		cb.logger.Info("Execution of this step skipped", "index", index, "name", s.Name)
+		return migration.CallbackResult{Action: migration.ActionSkip}
+	default: // "Automatically"
+		cb.logger.Info("Executing step...", "index", index, "name", s.Name)
+		return migration.CallbackResult{Action: migration.ActionContinue}
+	}
 }
 
 func (cb *executionCallback) StepSucceeded(s migration.Step, index int, diagnostics any) migration.CallbackResult {
@@ -212,5 +412,33 @@ func (cb *executionCallback) StepSucceeded(s migration.Step, index int, diagnost
 
 func (cb *executionCallback) StepFailed(s migration.Step, index int, diagnostics any, err error) migration.CallbackResult {
 	cb.logger.Info("Step failed", "diagnostics", fmt.Sprintf("%s", diagnostics), "index", index, "name", s.Name, "err", err)
-	return migration.CallbackResult{Action: migration.ActionCancel}
+	var failChoice string
+	retryChoiceQuestion := &survey.Select{
+		Message: fmt.Sprintf("Execution of this step failed: %s\n"+
+			"What is your choice to continue?", s.ManualExecution),
+		Help: "Retry: Command will be retried.\n" +
+			"Skip: This step will be skipped.\n" +
+			"Cancel: Execution of plan will be canceled.",
+		Options: []string{
+			retryChoice,
+			skipChoice,
+			cancelChoice,
+		},
+	}
+	if err := survey.AskOne(retryChoiceQuestion, &failChoice); err != nil {
+		cb.logger.Info("Retry choice question could not ask or get answer", "index", index, "name", s.Name)
+		return migration.CallbackResult{Action: migration.ActionCancel}
+	}
+	switch failChoice {
+	case skipChoice:
+		cb.logger.Info("Step skipped", "index", index, "name", s.Name, "err", err)
+		return migration.CallbackResult{Action: migration.ActionSkip}
+	case cancelChoice:
+		cb.logger.Info("Execution of plan canceled", "index", index, "name", s.Name, "err", err)
+		return migration.CallbackResult{Action: migration.ActionCancel}
+	default: // "Retry"
+		cb.logger.Info("Step will be run again", "index", index, "name", s.Name, "err", err)
+		return migration.CallbackResult{Action: migration.ActionRepeat}
+	}
+
 }
