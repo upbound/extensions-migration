@@ -9,7 +9,7 @@ require (
 	github.com/crossplane/crossplane-runtime v0.20.0-rc.0.0.20230406155702-4e1673b7141f
 	github.com/google/go-cmp v0.5.9
 	github.com/pkg/errors v0.9.1
-	github.com/upbound/upjet v0.9.0-rc.0.0.20230609110242-aaafdd4057c5
+	github.com/upbound/upjet v0.9.0-rc.0.0.20230707151127-90af5e54611a
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apimachinery v0.26.3
 	sigs.k8s.io/controller-runtime v0.14.6
@@ -89,5 +89,3 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
-
-replace github.com/upbound/upjet => ../upjet
