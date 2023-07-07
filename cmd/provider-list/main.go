@@ -33,6 +33,8 @@ import (
 	"github.com/upbound/upjet/pkg/migration"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/upbound/extensions-migration/pkg/converter/configuration"
 )
 
 const (
@@ -70,8 +72,10 @@ func main() {
 		}))
 
 	r := migration.NewRegistry(runtime.NewScheme())
-	r.RegisterPreProcessor(migration.CategoryManaged, migration.PreProcessor(GetSSOPNameFromManagedResource))
-	r.RegisterPreProcessor(migration.CategoryComposition, migration.PreProcessor(GetSSOPNameFromComposition))
+	mp := configuration.NewMRPreProcessor()
+	cp := configuration.NewCompositionPreProcessor()
+	r.RegisterPreProcessor(migration.CategoryManaged, migration.PreProcessor(mp.GetSSOPNameFromManagedResource))
+	r.RegisterPreProcessor(migration.CategoryComposition, migration.PreProcessor(cp.GetSSOPNameFromComposition))
 	kongCtx.FatalIfErrorf(r.AddCompositionTypes(), "Failed to register the Crossplane Composition types with the migration registry")
 
 	var source migration.Source
@@ -86,8 +90,11 @@ func main() {
 
 	pg := migration.NewPlanGenerator(r, source, nil, migration.WithSkipGVKs(schema.GroupVersionKind{}))
 	kongCtx.FatalIfErrorf(pg.GeneratePlan(), "Failed to list the required provider family packages")
-	providers := make([]string, 0, len(SSOPNames))
-	for p := range SSOPNames {
+	providers := make([]string, 0, len(mp.ProviderNames)+len(cp.ProviderNames))
+	for p := range mp.ProviderNames {
+		providers = append(providers, p)
+	}
+	for p := range cp.ProviderNames {
 		providers = append(providers, p)
 	}
 	sort.Strings(providers)
