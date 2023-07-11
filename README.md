@@ -11,7 +11,7 @@ Official Providers.
 
 ## Getting Started
 
-You can get started by following the guides in [docs](docs/README.md) directory!
+You can get started by following the guides in [docs](docs/) directory!
 
 ## Report a Bug
 
