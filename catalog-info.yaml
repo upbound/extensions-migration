@@ -1,0 +1,14 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: extensions-migration
+  description: "Migration & upgrade related tooling for Crossplane extensions maintained by Upbound and friends "
+  links:
+    - url: https://github.com/upbound/extensions-migration/tree/main/docs
+      title: Documentation
+  annotations:
+    github.com/project-slug: upbound/extensions-migration
+spec:
+  type: service
+  lifecycle: production
+  owner: team:extensions
