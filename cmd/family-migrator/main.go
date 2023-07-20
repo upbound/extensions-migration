@@ -337,10 +337,13 @@ func askExecutionSteps(kongCtx *kong.Context, plan *migration.Plan, opts *Option
 	}
 	kongCtx.FatalIfErrorf(survey.AskOne(manualExecutionSteps, &displaySteps))
 	if displaySteps {
-		for _, s := range plan.Spec.Steps {
+		for i, s := range plan.Spec.Steps {
+			buff := strings.Builder{}
+			buff.WriteString(fmt.Sprintf("%d. %s: %s\n", i+1, s.Name, s.Description))
 			for _, c := range s.ManualExecution {
-				fmt.Println(c)
+				buff.WriteString(fmt.Sprintf("$ %s \n", c))
 			}
+			fmt.Println(buff.String())
 		}
 	}
 
