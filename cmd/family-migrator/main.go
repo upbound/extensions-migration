@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/upbound/extensions-migration/pkg/cache"
 	"github.com/upbound/extensions-migration/pkg/converter/configuration"
 )
 
@@ -49,6 +50,8 @@ const (
 	providerAwsChoice   = "provider-aws"
 	providerAzureChoice = "provider-azure"
 	providerGcpChoice   = "provider-gcp"
+
+	cacheFileName = ".cache"
 )
 
 // Options represents the available options for the family-migrator.
@@ -68,7 +71,9 @@ type Options struct {
 		KubeConfig string `name:"kubeconfig" help:"Path to the kubeconfig to use."`
 	} `kong:"cmd"`
 
-	Execute struct{} `kong:"cmd"`
+	Execute struct {
+		LoadPlan int `name:"load-plan" help:"Start the execution of a migration plan from specified step."`
+	} `kong:"cmd"`
 
 	PlanPath string `name:"plan-path" help:"Migration plan output path." survey:"plan-path"`
 
@@ -101,6 +106,39 @@ func main() {
 }
 
 func generatePlan(kongCtx *kong.Context, opts *Options, planDir string) {
+	r := registerConverters(kongCtx, opts)
+
+	fsSource, err := migration.NewFileSystemSource(opts.Generate.PackageRoot)
+	kongCtx.FatalIfErrorf(err, "Failed to initialize the migration FileSystem source from path: %s", opts.Generate.PackageRoot)
+
+	if len(opts.Generate.KubeConfig) == 0 {
+		homeDir, err := os.UserHomeDir()
+		kongCtx.FatalIfErrorf(err, "Failed to get user's home")
+		opts.Generate.KubeConfig = filepath.Join(homeDir, defaultKubeConfig)
+	}
+	kubeSource, err := migration.NewKubernetesSourceFromKubeConfig(opts.Generate.KubeConfig, migration.WithRegistry(r), migration.WithCategories([]migration.Category{migration.CategoryManaged}))
+	kongCtx.FatalIfErrorf(err, "Failed to initialize the migration Kubernetes source from kubeconfig: %s", opts.Generate.KubeConfig)
+
+	pg := migration.NewPlanGenerator(r, nil, migration.NewFileSystemTarget(migration.WithParentDirectory(planDir)), migration.WithEnableConfigurationMigrationSteps(), migration.WithMultipleSources(fsSource, kubeSource), migration.WithSkipGVKs(schema.GroupVersionKind{}))
+	kongCtx.FatalIfErrorf(pg.GeneratePlan(), "Failed to generate the migration plan for the provider families")
+
+	setPkgParameters(&pg.Plan, *opts)
+	buff, err := yaml.Marshal(pg.Plan)
+	kongCtx.FatalIfErrorf(err, "Failed to marshal the migration plan to YAML")
+	kongCtx.FatalIfErrorf(os.WriteFile(opts.PlanPath, buff, 0600), "Failed to store the migration plan at path: %s", opts.PlanPath)
+
+	var moveExecution bool
+	moveExecutionPhaseQuestion := &survey.Confirm{
+		Message: fmt.Sprintf("The migration plan has been generated at path: %s. The referred resource manifests and the patch documents can be found under: %s.\n"+
+			"Would you like to proceed to the execution phase?", opts.PlanPath, planDir),
+	}
+	kongCtx.FatalIfErrorf(survey.AskOne(moveExecutionPhaseQuestion, &moveExecution))
+	if moveExecution {
+		executePlan(kongCtx, planDir, opts)
+	}
+}
+
+func registerConverters(kongCtx *kong.Context, opts *Options) *migration.Registry {
 	r := migration.NewRegistry(runtime.NewScheme())
 	err := r.AddCrossplanePackageTypes()
 	kongCtx.FatalIfErrorf(err, "Failed to register the Provider package types with the migration registry")
@@ -156,35 +194,7 @@ func generatePlan(kongCtx *kong.Context, opts *Options, planDir string) {
 		PackageURL: opts.Generate.SourceConfigurationPackage,
 	})
 	kongCtx.FatalIfErrorf(r.AddCompositionTypes(), "Failed to register the Crossplane Composition types with the migration registry")
-
-	fsSource, err := migration.NewFileSystemSource(opts.Generate.PackageRoot)
-	kongCtx.FatalIfErrorf(err, "Failed to initialize the migration FileSystem source from path: %s", opts.Generate.PackageRoot)
-
-	if len(opts.Generate.KubeConfig) == 0 {
-		homeDir, err := os.UserHomeDir()
-		kongCtx.FatalIfErrorf(err, "Failed to get user's home")
-		opts.Generate.KubeConfig = filepath.Join(homeDir, defaultKubeConfig)
-	}
-	kubeSource, err := migration.NewKubernetesSourceFromKubeConfig(opts.Generate.KubeConfig, migration.WithRegistry(r), migration.WithCategories([]migration.Category{migration.CategoryManaged}))
-	kongCtx.FatalIfErrorf(err, "Failed to initialize the migration Kubernetes source from kubeconfig: %s", opts.Generate.KubeConfig)
-
-	pg := migration.NewPlanGenerator(r, nil, migration.NewFileSystemTarget(migration.WithParentDirectory(planDir)), migration.WithEnableConfigurationMigrationSteps(), migration.WithMultipleSources(fsSource, kubeSource), migration.WithSkipGVKs(schema.GroupVersionKind{}))
-	kongCtx.FatalIfErrorf(pg.GeneratePlan(), "Failed to generate the migration plan for the provider families")
-
-	setPkgParameters(&pg.Plan, *opts)
-	buff, err := yaml.Marshal(pg.Plan)
-	kongCtx.FatalIfErrorf(err, "Failed to marshal the migration plan to YAML")
-	kongCtx.FatalIfErrorf(os.WriteFile(opts.PlanPath, buff, 0600), "Failed to store the migration plan at path: %s", opts.PlanPath)
-
-	var moveExecution bool
-	moveExecutionPhaseQuestion := &survey.Confirm{
-		Message: fmt.Sprintf("The migration plan has been generated at path: %s. The referred resource manifests and the patch documents can be found under: %s.\n"+
-			"Would you like to proceed to the execution phase?", opts.PlanPath, planDir),
-	}
-	kongCtx.FatalIfErrorf(survey.AskOne(moveExecutionPhaseQuestion, &moveExecution))
-	if moveExecution {
-		executePlan(kongCtx, planDir, opts)
-	}
+	return r
 }
 
 func executePlan(kongCtx *kong.Context, planDir string, opts *Options) {
@@ -192,6 +202,35 @@ func executePlan(kongCtx *kong.Context, planDir string, opts *Options) {
 	buff, err := os.ReadFile(opts.PlanPath)
 	kongCtx.FatalIfErrorf(err, "Failed to read the migration plan from path: %s", opts.PlanPath)
 	kongCtx.FatalIfErrorf(yaml.Unmarshal(buff, plan), "Failed to unmarshal the migration plan: %s", opts.PlanPath)
+
+	var c cache.Cache
+	var startIndex int
+	readPlanHash, err := cache.CalculateHash(buff)
+	kongCtx.FatalIfErrorf(err, "Failed to calculate hash of migration plan")
+	cacheFilePath := filepath.Join(planDir, cacheFileName)
+
+	if opts.Execute.LoadPlan == 0 {
+		if cache.IsCacheExists(cacheFilePath) {
+			cacheBuff, err := os.ReadFile(cacheFilePath)
+			kongCtx.FatalIfErrorf(err, "Failed to read the cache file")
+			kongCtx.FatalIfErrorf(yaml.Unmarshal(cacheBuff, &c), "Failed to unmarshal the cache file")
+			if c.Hash == readPlanHash && cache.AskToContinueExecution(kongCtx) {
+				startIndex = c.Step
+			} else {
+				cache.ClearCache(cacheFilePath, kongCtx)
+			}
+		}
+	} else {
+		var continueToLoadPlan bool
+		kongCtx.FatalIfErrorf(survey.AskOne(&survey.Confirm{
+			Message: fmt.Sprintf("You specified a step index to execute the plan: %d. "+
+				"Do you want to start from this step to execution", opts.Execute.LoadPlan),
+		}, &continueToLoadPlan))
+		if continueToLoadPlan {
+			startIndex = opts.Execute.LoadPlan
+		}
+	}
+	c.Hash = readPlanHash
 
 	stepByStep := askExecutionSteps(kongCtx, plan, opts, planDir)
 	zl := zap.New(zap.UseDevMode(opts.Debug))
@@ -204,13 +243,18 @@ func executePlan(kongCtx *kong.Context, planDir string, opts *Options) {
 		planExecutor = migration.NewPlanExecutor(*plan, []migration.Executor{executor},
 			migration.WithExecutorCallback(&executionCallback{
 				logger: logging.NewLogrLogger(zl.WithName("family-migrator")),
-			}))
+			}), migration.WithStartIndex(startIndex))
 	} else {
-		planExecutor = migration.NewPlanExecutor(*plan, []migration.Executor{executor})
+		planExecutor = migration.NewPlanExecutor(*plan, []migration.Executor{executor}, migration.WithStartIndex(startIndex))
 	}
 	backupDir := filepath.Join(planDir, "backup")
 	kongCtx.FatalIfErrorf(os.MkdirAll(backupDir, 0o700), "Failed to mkdir backup directory: %s", backupDir)
-	kongCtx.FatalIfErrorf(planExecutor.Execute(), "Failed to execute the migration plan at path: %s", opts.PlanPath)
+	err = planExecutor.Execute()
+	if err != nil {
+		c.Step = planExecutor.LastSuccessfulStep + 1
+		kongCtx.FatalIfErrorf(os.WriteFile(cacheFilePath, []byte(c.String()), 0600))
+		kongCtx.FatalIfErrorf(err, "Failed to execute the migration plan at path: %s", opts.PlanPath)
+	}
 }
 
 func setPkgParameters(plan *migration.Plan, opts Options) {
@@ -337,10 +381,13 @@ func askExecutionSteps(kongCtx *kong.Context, plan *migration.Plan, opts *Option
 	}
 	kongCtx.FatalIfErrorf(survey.AskOne(manualExecutionSteps, &displaySteps))
 	if displaySteps {
-		for _, s := range plan.Spec.Steps {
+		for i, s := range plan.Spec.Steps {
+			buff := strings.Builder{}
+			buff.WriteString(fmt.Sprintf("%d. %s: %s\n", i+1, s.Name, s.Description))
 			for _, c := range s.ManualExecution {
-				fmt.Println(c)
+				buff.WriteString(fmt.Sprintf("$ %s \n", c))
 			}
+			fmt.Println(buff.String())
 		}
 	}
 
@@ -445,5 +492,4 @@ func (cb *executionCallback) StepFailed(s migration.Step, index int, diagnostics
 		cb.logger.Info("Step will be run again", "index", index, "name", s.Name, "err", err)
 		return migration.CallbackResult{Action: migration.ActionRepeat}
 	}
-
 }
