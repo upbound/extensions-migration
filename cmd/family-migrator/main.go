@@ -199,15 +199,17 @@ func executePlan(kongCtx *kong.Context, planDir string, opts *Options) {
 	executor := migration.NewForkExecutor(migration.WithWorkingDir(planDir), migration.WithLogger(log))
 	// TODO: we need to load the plan back from the filesystem as it may
 	// have been modified.
-	var planExecutor *migration.PlanExecutor
-	if stepByStep {
-		planExecutor = migration.NewPlanExecutor(*plan, []migration.Executor{executor},
-			migration.WithExecutorCallback(&executionCallback{
-				logger: logging.NewLogrLogger(zl.WithName("family-migrator")),
-			}))
-	} else {
-		planExecutor = migration.NewPlanExecutor(*plan, []migration.Executor{executor})
+	var cb migration.ExecutorCallback
+	cb = &loggerCallback{
+		logger: logging.NewLogrLogger(zl.WithName("family-migrator")),
 	}
+	if stepByStep {
+		cb = &executionCallback{
+			logger: logging.NewLogrLogger(zl.WithName("family-migrator")),
+		}
+	}
+	planExecutor := migration.NewPlanExecutor(*plan, []migration.Executor{executor},
+		migration.WithExecutorCallback(cb))
 	backupDir := filepath.Join(planDir, "backup")
 	kongCtx.FatalIfErrorf(os.MkdirAll(backupDir, 0o700), "Failed to mkdir backup directory: %s", backupDir)
 	kongCtx.FatalIfErrorf(planExecutor.Execute(), "Failed to execute the migration plan at path: %s", opts.PlanPath)
@@ -359,6 +361,25 @@ func askExecutionSteps(kongCtx *kong.Context, plan *migration.Plan, opts *Option
 	default: // "No Interaction"
 		return false
 	}
+}
+
+type loggerCallback struct {
+	logger logging.Logger
+}
+
+func (cb *loggerCallback) StepToExecute(s migration.Step, index int) migration.CallbackResult {
+	cb.logger.Info("Executing step...", "index", index, "name", s.Name)
+	return migration.CallbackResult{Action: migration.ActionContinue}
+}
+
+func (cb *loggerCallback) StepSucceeded(s migration.Step, index int, diagnostics any) migration.CallbackResult {
+	cb.logger.Info("Step succeeded", "diagnostics", fmt.Sprintf("%s", diagnostics), "index", index, "name", s.Name)
+	return migration.CallbackResult{Action: migration.ActionContinue}
+}
+
+func (cb *loggerCallback) StepFailed(s migration.Step, index int, diagnostics any, err error) migration.CallbackResult {
+	cb.logger.Info("Step failed", "diagnostics", fmt.Sprintf("%s", diagnostics), "index", index, "name", s.Name, "err", err)
+	return migration.CallbackResult{Action: migration.ActionCancel}
 }
 
 type executionCallback struct {
