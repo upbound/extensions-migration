@@ -199,18 +199,17 @@ func executePlan(kongCtx *kong.Context, planDir string, opts *Options) {
 	executor := migration.NewForkExecutor(migration.WithWorkingDir(planDir), migration.WithLogger(log))
 	// TODO: we need to load the plan back from the filesystem as it may
 	// have been modified.
-	var planExecutor *migration.PlanExecutor
-	if stepByStep {
-		planExecutor = migration.NewPlanExecutor(*plan, []migration.Executor{executor},
-			migration.WithExecutorCallback(&executionCallback{
-				logger: logging.NewLogrLogger(zl.WithName("family-migrator")),
-			}))
-	} else {
-		planExecutor = migration.NewPlanExecutor(*plan, []migration.Executor{executor},
-			migration.WithExecutorCallback(&loggerCallback{
-				logger: logging.NewLogrLogger(zl.WithName("family-migrator")),
-			}))
+	var cb migration.ExecutorCallback
+	cb = &loggerCallback{
+		logger: logging.NewLogrLogger(zl.WithName("family-migrator")),
 	}
+	if stepByStep {
+		cb = &executionCallback{
+			logger: logging.NewLogrLogger(zl.WithName("family-migrator")),
+		}
+	}
+	planExecutor := migration.NewPlanExecutor(*plan, []migration.Executor{executor},
+		migration.WithExecutorCallback(cb))
 	backupDir := filepath.Join(planDir, "backup")
 	kongCtx.FatalIfErrorf(os.MkdirAll(backupDir, 0o700), "Failed to mkdir backup directory: %s", backupDir)
 	kongCtx.FatalIfErrorf(planExecutor.Execute(), "Failed to execute the migration plan at path: %s", opts.PlanPath)
