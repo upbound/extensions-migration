@@ -16,7 +16,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -25,6 +27,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/alecthomas/kong"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
+	"github.com/pkg/errors"
 	"github.com/upbound/upjet/pkg/migration"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -50,6 +53,12 @@ const (
 	providerAzureChoice = "provider-azure"
 	providerGcpChoice   = "provider-gcp"
 )
+
+var monolithicToFamily = map[string]string{
+	"provider-aws":   "provider-family-aws",
+	"provider-azure": "provider-family-azure",
+	"provider-gcp":   "provider-family-gcp",
+}
 
 // Options represents the available options for the family-migrator.
 type Options struct {
@@ -93,7 +102,7 @@ func main() {
 
 	switch kongCtx.Command() {
 	case "generate":
-		getGenerateInputs(kongCtx, opts)
+		getGenerateInputs(kongCtx, planDir, opts)
 		generatePlan(kongCtx, opts, planDir)
 	case "execute":
 		executePlan(kongCtx, planDir, opts)
@@ -231,13 +240,21 @@ func setPkgParameters(plan *migration.Plan, opts Options) {
 	}
 }
 
-func getGenerateInputs(kongCtx *kong.Context, opts *Options) {
+func getGenerateInputs(kongCtx *kong.Context, planDir string, opts *Options) {
+	registryOrgValidator := func(ans interface{}) error {
+		re := regexp.MustCompile(`(?i)([A-Za-z0-9]+/[A-Za-z0-9]+)`)
+		if !re.MatchString(ans.(string)) {
+			return errors.New("The answer does not match with the format of reg-org. Format: <registry host>/<organization>")
+		}
+		return nil
+	}
+
 	if opts.Generate.RegistryOrg == "" {
 		regOrgQuestion := &survey.Input{
 			Message: "Please provide the registry and organization for the provider family packages",
 			Help:    "Input Format: <registry host>/<organization> Example xpkg.upbound.io/upbound",
 		}
-		kongCtx.FatalIfErrorf(survey.AskOne(regOrgQuestion, &opts.Generate.RegistryOrg))
+		kongCtx.FatalIfErrorf(survey.AskOne(regOrgQuestion, &opts.Generate.RegistryOrg, survey.WithValidator(registryOrgValidator)))
 	}
 
 	if opts.Generate.AWSFamilyVersion == "" && opts.Generate.AzureFamilyVersion == "" && opts.Generate.GCPFamilyVersion == "" {
@@ -252,18 +269,26 @@ func getGenerateInputs(kongCtx *kong.Context, opts *Options) {
 		}
 		kongCtx.FatalIfErrorf(survey.AskOne(providerSelection, &selectedProviders))
 
+		versionValidator := func(ans interface{}) error {
+			re := regexp.MustCompile(`(?i)v[0-9]+\.[0-9]+\.[0-9]+`)
+			if !re.MatchString(ans.(string)) {
+				return errors.New("The answer does not match with the format of version. Format: v0.x.y")
+			}
+			return nil
+		}
+
 		for _, sp := range selectedProviders {
 			versionQuestion := &survey.Input{
-				Message: fmt.Sprintf("Please specify the version of the %s family.", sp),
-				Help:    "Example: v0.18.0",
+				Message: fmt.Sprintf("Please specify the version of the %s family. Possible versions:\n%s", sp, listFamilyProviderVersions(getFamilyProviderVersions(kongCtx, sp))),
+				Help:    "Format: v0.x.y",
 			}
 			switch sp {
 			case providerAwsChoice:
-				kongCtx.FatalIfErrorf(survey.AskOne(versionQuestion, &opts.Generate.AWSFamilyVersion))
+				kongCtx.FatalIfErrorf(survey.AskOne(versionQuestion, &opts.Generate.AWSFamilyVersion, survey.WithValidator(versionValidator)))
 			case providerAzureChoice:
-				kongCtx.FatalIfErrorf(survey.AskOne(versionQuestion, &opts.Generate.AzureFamilyVersion))
+				kongCtx.FatalIfErrorf(survey.AskOne(versionQuestion, &opts.Generate.AzureFamilyVersion, survey.WithValidator(versionValidator)))
 			case providerGcpChoice:
-				kongCtx.FatalIfErrorf(survey.AskOne(versionQuestion, &opts.Generate.GCPFamilyVersion))
+				kongCtx.FatalIfErrorf(survey.AskOne(versionQuestion, &opts.Generate.GCPFamilyVersion, survey.WithValidator(versionValidator)))
 			}
 		}
 	}
@@ -304,12 +329,7 @@ func getGenerateInputs(kongCtx *kong.Context, opts *Options) {
 		})
 	}
 	if opts.Generate.PackageOutput == "" {
-		packageAndPathQuestions = append(packageAndPathQuestions, &survey.Question{
-			Name: "package-output",
-			Prompt: &survey.Input{
-				Message: "Please specify the path to store the updated configuration package",
-			},
-		})
+		opts.Generate.PackageOutput = filepath.Join(planDir, "updated-package.pkg")
 	}
 	kongCtx.FatalIfErrorf(survey.Ask(packageAndPathQuestions, &opts.Generate))
 }
@@ -361,6 +381,35 @@ func askExecutionSteps(kongCtx *kong.Context, plan *migration.Plan, opts *Option
 	default: // "No Interaction"
 		return false
 	}
+}
+
+func getFamilyProviderVersions(kongCtx *kong.Context, providerName string) []interface{} {
+	var versions []interface{}
+	resp, err := http.Get(fmt.Sprintf("https://api.upbound.io/v1/packageMetadata/upbound/%s", monolithicToFamily[providerName]))
+	if err != nil {
+		fmt.Println("No suitable version found in the marketplace for the specified provider. Please check manually.")
+	}
+	if resp.StatusCode == 200 {
+		defer func() {
+			kongCtx.FatalIfErrorf(resp.Body.Close())
+		}()
+		var v interface{}
+		err = json.NewDecoder(resp.Body).Decode(&v)
+		if err != nil {
+			fmt.Println("No suitable version found in the marketplace for the specified provider. Please check manually.")
+			return nil
+		}
+		versions = v.(map[string]interface{})["versions"].([]interface{})
+	}
+	return versions
+}
+
+func listFamilyProviderVersions(versions []interface{}) string {
+	r := make([]string, len(versions))
+	for i, v := range versions {
+		r[i] = v.(string)
+	}
+	return strings.Join(r, "\n")
 }
 
 type loggerCallback struct {
