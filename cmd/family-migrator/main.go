@@ -242,9 +242,9 @@ func setPkgParameters(plan *migration.Plan, opts Options) {
 
 func getGenerateInputs(kongCtx *kong.Context, planDir string, opts *Options) {
 	registryOrgValidator := func(ans interface{}) error {
-		re := regexp.MustCompile(`(?i)([A-Za-z0-9]+/[A-Za-z0-9]+)`)
+		re := regexp.MustCompile(`(?i)([a-z0-9]+/[a-z0-9]+)`)
 		if !re.MatchString(ans.(string)) {
-			return errors.New("The answer does not match with the format of reg-org. Format: <registry host>/<organization>")
+			return errors.Errorf("The answer %q does not match with the format of reg-org. Format: <registry host>/<organization>", ans)
 		}
 		return nil
 	}
@@ -270,9 +270,9 @@ func getGenerateInputs(kongCtx *kong.Context, planDir string, opts *Options) {
 		kongCtx.FatalIfErrorf(survey.AskOne(providerSelection, &selectedProviders))
 
 		versionValidator := func(ans interface{}) error {
-			re := regexp.MustCompile(`(?i)v[0-9]+\.[0-9]+\.[0-9]+`)
+			re := regexp.MustCompile(`v[0-9]+\.[0-9]+\.[0-9]+`)
 			if !re.MatchString(ans.(string)) {
-				return errors.New("The answer does not match with the format of version. Format: v0.x.y")
+				return errors.Errorf("The answer %q does not match with the format of version. Format: v0.x.y", ans)
 			}
 			return nil
 		}
@@ -384,24 +384,23 @@ func askExecutionSteps(kongCtx *kong.Context, plan *migration.Plan, opts *Option
 }
 
 func getFamilyProviderVersions(kongCtx *kong.Context, providerName string) []interface{} {
-	var versions []interface{}
 	resp, err := http.Get(fmt.Sprintf("https://api.upbound.io/v1/packageMetadata/upbound/%s", monolithicToFamily[providerName]))
 	if err != nil {
 		fmt.Println("No suitable version found in the marketplace for the specified provider. Please check manually.")
 	}
-	if resp.StatusCode == 200 {
-		defer func() {
-			kongCtx.FatalIfErrorf(resp.Body.Close())
-		}()
-		var v interface{}
-		err = json.NewDecoder(resp.Body).Decode(&v)
-		if err != nil {
-			fmt.Println("No suitable version found in the marketplace for the specified provider. Please check manually.")
-			return nil
-		}
-		versions = v.(map[string]interface{})["versions"].([]interface{})
+	if resp.StatusCode != 200 {
+		return nil
 	}
-	return versions
+	defer func() {
+		kongCtx.FatalIfErrorf(resp.Body.Close())
+	}()
+	var v interface{}
+	err = json.NewDecoder(resp.Body).Decode(&v)
+	if err != nil {
+		fmt.Println("No suitable version found in the marketplace for the specified provider. Please check manually.")
+		return nil
+	}
+	return v.(map[string]interface{})["versions"].([]interface{})
 }
 
 func listFamilyProviderVersions(versions []interface{}) string {
