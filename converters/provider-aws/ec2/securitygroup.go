@@ -15,7 +15,7 @@
 package ec2
 
 import (
-	srcv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/ec2/v1beta1"
+	srcv1beta1 "github.com/crossplane-contrib/provider-aws/apis/ec2/v1beta1"
 	runtimev1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	v1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
@@ -26,7 +26,7 @@ import (
 )
 
 func SecurityGroupResource(mg resource.Managed) ([]resource.Managed, error) {
-	source := mg.(*srcv1alpha1.SecurityGroup)
+	source := mg.(*srcv1beta1.SecurityGroup)
 	target := &targetv1beta1.SecurityGroup{}
 	if _, err := migration.CopyInto(source, target, targetv1beta1.SecurityGroup_GroupVersionKind, "spec.forProvider.tags", "spec.forProvider.ingress", "spec.forProvider.egress"); err != nil {
 		return nil, errors.Wrap(err, "failed to copy source into target")
@@ -89,17 +89,21 @@ func SecurityGroupResource(mg resource.Managed) ([]resource.Managed, error) {
 }
 
 func SecurityGroupComposition(sourceTemplate v1.ComposedTemplate, convertedTemplates ...*v1.ComposedTemplate) error {
-	if err := common.DefaultCompositionConverter(true, nil, sourceTemplate, convertedTemplates...); err != nil {
-		return err
+	patchesToAdd, err := migration.ConvertComposedTemplateTags(sourceTemplate, ".value", ".key")
+	if err != nil {
+		return errors.Wrap(err, "failed to convert tags")
 	}
-
+	patchesToAdd = append(patchesToAdd, migration.ConvertComposedTemplatePatchesMap(sourceTemplate, nil)...)
+	for i := range convertedTemplates {
+		convertedTemplates[i].Patches = append(convertedTemplates[i].Patches, patchesToAdd...)
+	}
 	splittedPatchesToAdd := []v1.Patch{
 		{Type: v1.PatchTypeFromCompositeFieldPath,
 			FromFieldPath: common.PtrFromString("spec.forProvider.clusterSecurityGroup"),
 			ToFieldPath:   common.PtrFromString("spec.forProvider.sourceSecurityGroupId"),
 		},
 	}
-	err := common.SplittedResourcePatches(convertedTemplates, "SecurityGroupRule", splittedPatchesToAdd)
+	err = common.SplittedResourcePatches(convertedTemplates, "SecurityGroupRule", splittedPatchesToAdd)
 	if err != nil {
 		return errors.Wrap(err, "failed to add patches to splitted resource")
 	}

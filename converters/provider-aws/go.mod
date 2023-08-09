@@ -3,16 +3,17 @@ module github.com/upbound/extensions-migration/converters/provider-aws
 go 1.19
 
 require (
-	github.com/crossplane-contrib/provider-aws v0.35.0
+	github.com/crossplane-contrib/provider-aws v0.43.0-rc.0.0.20230809135829-3f14add7c3a9
 	github.com/crossplane/crossplane v1.10.0
-	github.com/crossplane/crossplane-runtime v0.20.0-rc.0.0.20230420204853-492ad7c63543
+	github.com/crossplane/crossplane-runtime v0.20.0
 	github.com/pkg/errors v0.9.1
 	github.com/upbound/extensions-migration v0.1.0-rc.1
-	github.com/upbound/provider-aws v0.37.0
-	github.com/upbound/upjet v0.9.0-rc.0.0.20230707151127-90af5e54611a
+	github.com/upbound/provider-aws v0.38.0
+	github.com/upbound/upjet v0.9.0-rc.0.0.20230801142301-06bdecc2fcb9
 )
 
 require (
+	dario.cat/mergo v1.0.0 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/antchfx/htmlquery v1.2.4 // indirect
 	github.com/antchfx/xpath v1.2.0 // indirect
@@ -107,7 +108,6 @@ require (
 	golang.org/x/term v0.10.0 // indirect
 	golang.org/x/text v0.11.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.11.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
@@ -131,6 +131,6 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace github.com/crossplane-contrib/provider-aws => github.com/chlunde/provider-aws v0.17.0-rc.0.0.20230428171200-3c79adaed20a
+replace github.com/upbound/upjet => ../../../upjet
 
 replace github.com/upbound/extensions-migration => /Users/sergenyalcin/workspace/upbound/extensions-migration

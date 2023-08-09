@@ -17,9 +17,7 @@ package elasticache
 import (
 	srcv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/elasticache/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
-	v1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	"github.com/pkg/errors"
-	"github.com/upbound/extensions-migration/converters/common"
 	targetv1beta1 "github.com/upbound/provider-aws/apis/elasticache/v1beta1"
 	"github.com/upbound/upjet/pkg/migration"
 )
@@ -45,11 +43,4 @@ func ParameterGroupResource(mg resource.Managed) ([]resource.Managed, error) {
 	return []resource.Managed{
 		target,
 	}, nil
-}
-
-func ParameterGroupComposition(sourceTemplate v1.ComposedTemplate, convertedTemplates ...*v1.ComposedTemplate) error {
-	conversionMap := map[string]string{
-		"spec.forProvider.cacheParameterGroupFamily": "spec.forProvider.family",
-	}
-	return common.DefaultCompositionConverter(true, conversionMap, sourceTemplate, convertedTemplates...)
 }

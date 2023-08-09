@@ -12,14 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package converters
+package route53
 
 import (
 	srcv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/route53/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
-	v1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	"github.com/pkg/errors"
-	"github.com/upbound/extensions-migration/converters/common"
 	targetv1beta1 "github.com/upbound/provider-aws/apis/route53/v1beta1"
 	"github.com/upbound/upjet/pkg/migration"
 )
@@ -44,8 +42,4 @@ func HostedZoneResource(mg resource.Managed) ([]resource.Managed, error) {
 	return []resource.Managed{
 		target,
 	}, nil
-}
-
-func HostedZoneComposition(sourceTemplate v1.ComposedTemplate, convertedTemplates ...*v1.ComposedTemplate) error {
-	return common.DefaultCompositionConverter(true, nil, sourceTemplate, convertedTemplates...)
 }

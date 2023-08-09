@@ -15,17 +15,15 @@
 package sns
 
 import (
-	srcv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/sns/v1beta1"
+	srcv1beta1 "github.com/crossplane-contrib/provider-aws/apis/sns/v1beta1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
-	v1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	"github.com/pkg/errors"
-	"github.com/upbound/extensions-migration/converters/common"
 	targetv1beta1 "github.com/upbound/provider-aws/apis/sns/v1beta1"
 	"github.com/upbound/upjet/pkg/migration"
 )
 
 func TopicResource(mg resource.Managed) ([]resource.Managed, error) {
-	source := mg.(*srcv1alpha1.Topic)
+	source := mg.(*srcv1beta1.Topic)
 	target := &targetv1beta1.Topic{}
 	if _, err := migration.CopyInto(source, target, targetv1beta1.TopicPolicy_GroupVersionKind, "spec.forProvider.tags"); err != nil {
 		return nil, errors.Wrap(err, "failed to copy source into target")
@@ -43,8 +41,4 @@ func TopicResource(mg resource.Managed) ([]resource.Managed, error) {
 	return []resource.Managed{
 		target,
 	}, nil
-}
-
-func TopicComposition(sourceTemplate v1.ComposedTemplate, convertedTemplates ...*v1.ComposedTemplate) error {
-	return common.DefaultCompositionConverter(true, nil, sourceTemplate, convertedTemplates...)
 }

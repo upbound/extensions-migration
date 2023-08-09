@@ -17,9 +17,7 @@ package efs
 import (
 	srcv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/efs/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
-	v1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	"github.com/pkg/errors"
-	"github.com/upbound/extensions-migration/converters/common"
 	targetv1beta1 "github.com/upbound/provider-aws/apis/efs/v1beta1"
 	"github.com/upbound/upjet/pkg/migration"
 )
@@ -33,16 +31,4 @@ func MountTargetResource(mg resource.Managed) ([]resource.Managed, error) {
 	return []resource.Managed{
 		target,
 	}, nil
-}
-
-func MountTargetComposition(sourceTemplate v1.ComposedTemplate, convertedTemplates ...*v1.ComposedTemplate) error {
-	conversionMap := map[string]string{
-		"spec.forProvider.fileSystemID":         "spec.forProvider.fileSystemId",
-		"spec.forProvider.fileSystemIDRef":      "spec.forProvider.fileSystemIdRef",
-		"spec.forProvider.fileSystemIDSelector": "spec.forProvider.fileSystemIdSelector",
-		"spec.forProvider.subnetID":             "spec.forProvider.subnetId",
-		"spec.forProvider.subnetIDRef":          "spec.forProvider.subnetIdRef",
-		"spec.forProvider.subnetIDSelector":     "spec.forProvider.subnetIdSelector",
-	}
-	return common.DefaultCompositionConverter(true, conversionMap, sourceTemplate, convertedTemplates...)
 }

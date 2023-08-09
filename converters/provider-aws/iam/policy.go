@@ -15,12 +15,10 @@
 package iam
 
 import (
-	"github.com/upbound/extensions-migration/converters/common"
 	"strings"
 
 	srcv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/iam/v1beta1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
-	v1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	"github.com/pkg/errors"
 	targetv1beta1 "github.com/upbound/provider-aws/apis/iam/v1beta1"
 	"github.com/upbound/upjet/pkg/migration"
@@ -48,11 +46,4 @@ func PolicyResource(mg resource.Managed) ([]resource.Managed, error) {
 	return []resource.Managed{
 		target,
 	}, nil
-}
-
-func PolicyComposition(sourceTemplate v1.ComposedTemplate, convertedTemplates ...*v1.ComposedTemplate) error {
-	conversionMap := map[string]string{
-		"spec.forProvider.document": "spec.forProvider.policy",
-	}
-	return common.DefaultCompositionConverter(true, conversionMap, sourceTemplate, convertedTemplates...)
 }

@@ -17,9 +17,7 @@ package iam
 import (
 	srcv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/iam/v1beta1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
-	v1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	"github.com/pkg/errors"
-	"github.com/upbound/extensions-migration/converters/common"
 	targetv1beta1 "github.com/upbound/provider-aws/apis/iam/v1beta1"
 	"github.com/upbound/upjet/pkg/migration"
 )
@@ -36,13 +34,4 @@ func RolePolicyAttachmentResource(mg resource.Managed) ([]resource.Managed, erro
 	return []resource.Managed{
 		target,
 	}, nil
-}
-
-func RolePolicyAttachmentComposition(sourceTemplate v1.ComposedTemplate, convertedTemplates ...*v1.ComposedTemplate) error {
-	conversionMap := map[string]string{
-		"spec.forProvider.roleName":         "spec.forProvider.role",
-		"spec.forProvider.roleNameRef":      "spec.forProvider.roleRef",
-		"spec.forProvider.roleNameSelector": "spec.forProvider.roleSelector",
-	}
-	return common.DefaultCompositionConverter(false, conversionMap, sourceTemplate, convertedTemplates...)
 }

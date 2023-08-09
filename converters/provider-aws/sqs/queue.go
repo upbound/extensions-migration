@@ -16,11 +16,8 @@ package sqs
 
 import (
 	"encoding/json"
-	"github.com/upbound/extensions-migration/converters/common"
-
 	srcv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/sqs/v1beta1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
-	v1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	"github.com/pkg/errors"
 	targetv1beta1 "github.com/upbound/provider-aws/apis/sqs/v1beta1"
 	"github.com/upbound/upjet/pkg/migration"
@@ -79,8 +76,4 @@ func QueueResource(mg resource.Managed) ([]resource.Managed, error) {
 	return []resource.Managed{
 		target,
 	}, nil
-}
-
-func QueueComposition(sourceTemplate v1.ComposedTemplate, convertedTemplates ...*v1.ComposedTemplate) error {
-	return common.DefaultCompositionConverter(true, nil, sourceTemplate, convertedTemplates...)
 }
