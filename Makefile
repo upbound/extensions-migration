@@ -17,7 +17,9 @@ PLATFORMS ?= linux_amd64 linux_arm64 darwin_amd64 darwin_arm64
 # ====================================================================================
 # Setup Go
 GO_REQUIRED_VERSION = 1.19
-GOLANGCILINT_VERSION ?= 1.50.0
+# GOLANGCILINT_VERSION is inherited from build submodule by default.
+# Uncomment below if you need to override the version.
+# GOLANGCILINT_VERSION ?= 1.53.3
 GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider-list $(GO_PROJECT)/cmd/family-migrator
 GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
 GO_SUBDIRS += cmd internal
