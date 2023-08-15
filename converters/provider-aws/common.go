@@ -18,6 +18,7 @@ package provideraws
 
 import (
 	"fmt"
+	"github.com/upbound/extensions-migration/converters/provider-aws/kafka"
 	"strings"
 
 	cachev1alpha1 "github.com/crossplane-contrib/provider-aws/apis/cache/v1alpha1"
@@ -35,6 +36,7 @@ import (
 	eksv1beta1 "github.com/crossplane-contrib/provider-aws/apis/eks/v1beta1"
 	elasticachev1alpha1 "github.com/crossplane-contrib/provider-aws/apis/elasticache/v1alpha1"
 	iamv1beta1 "github.com/crossplane-contrib/provider-aws/apis/iam/v1beta1"
+	kafkav1alpha1 "github.com/crossplane-contrib/provider-aws/apis/kafka/v1alpha1"
 	kmsv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/kms/v1alpha1"
 	rdsv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/rds/v1alpha1"
 	route53v1alpha1 "github.com/crossplane-contrib/provider-aws/apis/route53/v1alpha1"
@@ -241,4 +243,6 @@ func RegisterAllKnownConverters(r *migration.Registry) {
 		sns.TopicResource, migration.DefaultCompositionConverter(nil, ConvertComposedTemplateTags), DefaultPatchSetsConverter)
 	r.RegisterAPIConversionFunctions(sqsv1beta1.QueueGroupVersionKind,
 		sqs.QueueResource, migration.DefaultCompositionConverter(nil, ConvertComposedTemplateTags), DefaultPatchSetsConverter)
+	r.RegisterAPIConversionFunctions(kafkav1alpha1.ClusterGroupVersionKind,
+		kafka.ClusterResource, nil, nil)
 }

@@ -31,9 +31,9 @@ func NodegroupResource(mg resource.Managed) ([]resource.Managed, error) {
 	}
 
 	scalingConfig := &targetv1beta1.ScalingConfigParameters{
-		DesiredSize: common.PtrFloat64(source.Spec.ForProvider.ScalingConfig.DesiredSize),
-		MinSize:     common.PtrFloat64(source.Spec.ForProvider.ScalingConfig.MinSize),
-		MaxSize:     common.PtrFloat64(source.Spec.ForProvider.ScalingConfig.MaxSize),
+		DesiredSize: common.PtrFloat64FromInt32(source.Spec.ForProvider.ScalingConfig.DesiredSize),
+		MinSize:     common.PtrFloat64FromInt32(source.Spec.ForProvider.ScalingConfig.MinSize),
+		MaxSize:     common.PtrFloat64FromInt32(source.Spec.ForProvider.ScalingConfig.MaxSize),
 	}
 
 	target.Spec.ForProvider.ScalingConfig = append(target.Spec.ForProvider.ScalingConfig, *scalingConfig)

@@ -388,8 +388,6 @@ github.com/stretchr/testify v1.8.1 h1:w7B6lhMri9wdJUVmEZPGGhZzrYTPvgJArz7wNPgYKs
 github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
 github.com/tmccombs/hcl2json v0.3.3 h1:+DLNYqpWE0CsOQiEZu+OZm5ZBImake3wtITYxQ8uLFQ=
 github.com/tmccombs/hcl2json v0.3.3/go.mod h1:Y2chtz2x9bAeRTvSibVRVgbLJhLJXKlUeIvjeVdnm4w=
-github.com/upbound/extensions-migration v0.1.0-rc.1.0.20230815112541-eb63a5c5393e h1:6GyRDv93Vs7/Q120VApbFXasSQEvW5U55XORQGMKycI=
-github.com/upbound/extensions-migration v0.1.0-rc.1.0.20230815112541-eb63a5c5393e/go.mod h1:fi9znnlDe+PxvTpqsoYCol4Pj5UxNLAt0VqiXI1mpDc=
 github.com/upbound/provider-aws v0.38.0 h1:7e3djbXpm92tuVTWa83wue8/P3SyyBRUqpVGLSTxW2s=
 github.com/upbound/provider-aws v0.38.0/go.mod h1:3ghjoDmZKHcJp9Z1Ssz0Mb1k6Sx0yF4cj8qx/xILIrw=
 github.com/upbound/upjet v0.10.0-rc.0.0.20230815092629-6e0d116c3666 h1:hckZ5EDqoIEi7OKlQGgdF2TkNSApBUdM5cYjOeQlvYU=
