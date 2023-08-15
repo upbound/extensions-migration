@@ -9,7 +9,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/upbound/extensions-migration v0.1.0-rc.1
 	github.com/upbound/provider-aws v0.38.0
-	github.com/upbound/upjet v0.9.0-rc.0.0.20230801142301-06bdecc2fcb9
+	github.com/upbound/upjet v0.10.0-rc.0.0.20230815092629-6e0d116c3666
 )
 
 require (
@@ -130,7 +130,3 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
-
-replace github.com/upbound/upjet => ../../../upjet
-
-replace github.com/upbound/extensions-migration => /Users/sergenyalcin/workspace/upbound/extensions-migration

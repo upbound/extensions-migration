@@ -1,4 +1,20 @@
-package provider_aws
+// Copyright 2023 Upbound Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Package provideraws contains the API converters for the community AWS provider.
+// The target provider of these converters are Upbound Official AWS Provider.
+package provideraws
 
 import (
 	"fmt"
@@ -52,7 +68,7 @@ import (
 	"github.com/upbound/extensions-migration/converters/provider-aws/sqs"
 )
 
-// DefaultPatchSetsConverter is a default patchset converter for provider-aws
+// DefaultPatchSetsConverter is a default patchset converter for the community provider-aws
 func DefaultPatchSetsConverter(sourcePatchSets map[string]*xpv1.PatchSet) error {
 	tagsPatchSetName := ""
 	for _, patchSet := range sourcePatchSets {
@@ -111,6 +127,7 @@ func ConvertComposedTemplateTags(sourceTemplate xpv1.ComposedTemplate) ([]xpv1.P
 }
 
 // RegisterAllKnownConverters registers all known converters for provider-aws
+// All future API converters for the community AWS provider must be registered in this function for the correct GVK
 func RegisterAllKnownConverters(r *migration.Registry) {
 	r.RegisterAPIConversionFunctions(cloudfrontv1alpha1.DistributionGroupVersionKind,
 		cloudfront.DistributionResource, nil, DefaultPatchSetsConverter)
