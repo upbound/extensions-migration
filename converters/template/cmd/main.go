@@ -20,15 +20,38 @@
 package main
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
+
 	sourceapis "github.com/crossplane-contrib/provider-aws/apis"
-	"github.com/upbound/extensions-migration/converters/common"
-	provideraws "github.com/upbound/extensions-migration/converters/provider-aws"
 	targetapis "github.com/upbound/provider-aws/apis"
 	"github.com/upbound/upjet/pkg/migration"
+	"gopkg.in/alecthomas/kingpin.v2"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/yaml"
+
+	"github.com/upbound/extensions-migration/converters/common"
+	provideraws "github.com/upbound/extensions-migration/converters/provider-aws"
 )
 
 func main() {
+	// Common CLI Flags
+	// They can be extended according to requirements
+	var (
+		app            = kingpin.New(filepath.Base(os.Args[0]), "Upbound migration plan generator for migrating Kubernetes objects from community providers to official providers.").DefaultEnvars()
+		planPath       = app.Flag("plan-path", "Path where the generated migration plan will be stored").Short('p').Default("migration_plan.yaml").String()
+		sourcePath     = app.Flag("source-path", "Path of the root directory for the filesystem source").Short('s').String()
+		kubeconfigPath = app.Flag("kubeconfig", "Path of the kubernetes config file. Defaults to ~/.kube/config ").String()
+	)
+	if len(*kubeconfigPath) == 0 {
+		homeDir, err := os.UserHomeDir()
+		kingpin.FatalIfError(err, "Failed to get user's home directory")
+		*kubeconfigPath = filepath.Join(homeDir, ".kube/config")
+	}
+	kingpin.MustParse(app.Parse(os.Args[1:]))
+
+	// Registry initialization
 	registry := migration.NewRegistry(runtime.NewScheme())
 
 	// Register source and target API Groups to schema
@@ -49,4 +72,28 @@ func main() {
 
 	// Register all known API converters for the community AWS provider
 	provideraws.RegisterAllKnownConverters(registry)
+
+	// Initialize Source for reading resources
+	var source migration.Source
+	var err error
+	if len(*sourcePath) >= 1 { // FileSystem Source
+		fmt.Println("Using filesystem source")
+		source, err = migration.NewFileSystemSource(*sourcePath)
+		kingpin.FatalIfError(err, "Failed to initialize a Filesystem source")
+	} else { // Kubernetes Source
+		fmt.Println("Using kubernetes source")
+		source, err = migration.NewKubernetesSourceFromKubeConfig(*kubeconfigPath, migration.WithRegistry(registry))
+		kingpin.FatalIfError(err, "Failed to initialize a Kubernetes source")
+	}
+
+	// Initialize Target for writing resources
+	target := migration.NewFileSystemTarget()
+	// Generate Plan
+	pg := migration.NewPlanGenerator(registry, source, target)
+	err = pg.GeneratePlan()
+	kingpin.FatalIfError(err, "Failed to generate the migration plan")
+	// Write plan to the target plan path
+	buff, err := yaml.Marshal(pg.Plan)
+	kingpin.FatalIfError(err, "Failed to marshal the migration plan into YAML")
+	kingpin.FatalIfError(os.WriteFile(*planPath, buff, 0600), "Failed to store the migration plan: %s", planPath)
 }
