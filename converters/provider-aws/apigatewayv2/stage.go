@@ -29,6 +29,7 @@ func StageResource(mg resource.Managed) ([]resource.Managed, error) {
 		"spec.forProvider.accessLogSettings",
 		"spec.forProvider.clientCertificateId",
 		"spec.forProvider.defaultRouteSettings",
+		"spec.forProvider.routeSettings",
 		"spec.forProvider.deploymentID",
 	}
 	if _, err := migration.CopyInto(source, target, targetv1beta1.Stage_GroupVersionKind, skipFields...); err != nil {

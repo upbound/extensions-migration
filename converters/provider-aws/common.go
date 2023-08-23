@@ -149,11 +149,13 @@ func RegisterAllKnownConverters(r *migration.Registry) {
 	r.RegisterAPIConversionFunctions(apigatewayv2v1alpha1.StageGroupVersionKind,
 		apigatewayv2.StageResource, migration.DefaultCompositionConverter(nil, ConvertComposedTemplateTags), DefaultPatchSetsConverter)
 	r.RegisterAPIConversionFunctions(apigatewayv2v1beta1.VPCLinkGroupVersionKind,
-		apigatewayv2.VPCLinkResource, migration.DefaultCompositionConverter(nil, ConvertComposedTemplateTags), DefaultPatchSetsConverter)
+		apigatewayv2.VPCLinkV1Alpha1Resource, migration.DefaultCompositionConverter(nil, ConvertComposedTemplateTags), DefaultPatchSetsConverter)
+	r.RegisterAPIConversionFunctions(apigatewayv2v1beta1.VPCLinkGroupVersionKind,
+		apigatewayv2.VPCLinkV1Beta1Resource, migration.DefaultCompositionConverter(nil, ConvertComposedTemplateTags), DefaultPatchSetsConverter)
 	r.RegisterAPIConversionFunctions(cloudfrontv1alpha1.DistributionGroupVersionKind,
-		cloudfront.DistributionResource, nil, DefaultPatchSetsConverter)
+		cloudfront.DistributionResource, migration.DefaultCompositionConverter(nil, ConvertComposedTemplateTags), DefaultPatchSetsConverter)
 	r.RegisterAPIConversionFunctions(cloudfrontv1alpha1.ResponseHeadersPolicyGroupVersionKind,
-		cloudfront.ResponseHeadersPolicyResource, nil, DefaultPatchSetsConverter)
+		cloudfront.ResponseHeadersPolicyResource, migration.DefaultCompositionConverter(nil, ConvertComposedTemplateTags), DefaultPatchSetsConverter)
 	r.RegisterAPIConversionFunctions(cloudwatchlogsv1alpha1.LogGroupGroupVersionKind,
 		cloudwatchlogs.LogGroupResource, nil, nil)
 	r.RegisterAPIConversionFunctions(docdbv1alpha1.DBClusterGroupVersionKind,

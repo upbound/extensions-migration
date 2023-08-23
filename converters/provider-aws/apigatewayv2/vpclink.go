@@ -15,6 +15,7 @@
 package apigatewayv2
 
 import (
+	srcv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/apigatewayv2/v1alpha1"
 	srcv1beta1 "github.com/crossplane-contrib/provider-aws/apis/apigatewayv2/v1beta1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/pkg/errors"
@@ -22,8 +23,24 @@ import (
 	"github.com/upbound/upjet/pkg/migration"
 )
 
-func VPCLinkResource(mg resource.Managed) ([]resource.Managed, error) {
+func VPCLinkV1Beta1Resource(mg resource.Managed) ([]resource.Managed, error) {
 	source := mg.(*srcv1beta1.VPCLink)
+	target := &targetv1beta1.VPCLink{}
+	skipFields := []string{
+		"spec.forProvider.region",
+	}
+	if _, err := migration.CopyInto(source, target, targetv1beta1.VPCLink_GroupVersionKind, skipFields...); err != nil {
+		return nil, errors.Wrap(err, "failed to copy source into target")
+	}
+	// pointer type
+	target.Spec.ForProvider.Region = &source.Spec.ForProvider.Region
+	return []resource.Managed{
+		target,
+	}, nil
+}
+
+func VPCLinkV1Alpha1Resource(mg resource.Managed) ([]resource.Managed, error) {
+	source := mg.(*srcv1alpha1.VPCLink)
 	target := &targetv1beta1.VPCLink{}
 	skipFields := []string{
 		"spec.forProvider.region",
