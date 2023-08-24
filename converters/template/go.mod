@@ -4,8 +4,8 @@ go 1.19
 
 require (
 	github.com/crossplane-contrib/provider-aws v0.43.0-rc.0.0.20230809135829-3f14add7c3a9
-	github.com/upbound/extensions-migration v0.1.0-rc.1
-	github.com/upbound/extensions-migration/converters/provider-aws v0.0.0-00010101000000-000000000000
+	github.com/upbound/extensions-migration v0.1.0-rc.1.0.20230815112541-eb63a5c5393e
+	github.com/upbound/extensions-migration/converters/provider-aws v0.0.0-20230815094445-f6499b966d7f
 	github.com/upbound/provider-aws v0.38.0
 	github.com/upbound/upjet v0.10.0-rc.0.0.20230815092629-6e0d116c3666
 	k8s.io/apimachinery v0.27.3
@@ -144,3 +144,7 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
+
+replace github.com/upbound/extensions-migration => ../../../extensions-migration
+
+replace github.com/upbound/extensions-migration/converters/provider-aws => ../provider-aws
