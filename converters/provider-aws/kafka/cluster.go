@@ -58,6 +58,10 @@ func ClusterResource(mg resource.Managed) ([]resource.Managed, error) {
 				}
 			}
 		}
+
+		// NOTE: The following fields are newly introduced at the target API
+		// target.Spec.ForProvider.BrokerNodeGroupInfo[0].AzDistribution
+		// target.Spec.ForProvider.BrokerNodeGroupInfo[0].EBSVolumeSize
 	}
 	if source.Spec.ForProvider.ClientAuthentication != nil {
 		target.Spec.ForProvider.ClientAuthentication = make([]targetv1beta1.ClientAuthenticationParameters, 1)
@@ -80,6 +84,10 @@ func ClusterResource(mg resource.Managed) ([]resource.Managed, error) {
 			target.Spec.ForProvider.EncryptionInfo[0].EncryptionInTransit[0].InCluster = source.Spec.ForProvider.EncryptionInfo.EncryptionInTransit.InCluster
 			target.Spec.ForProvider.EncryptionInfo[0].EncryptionInTransit[0].ClientBroker = source.Spec.ForProvider.EncryptionInfo.EncryptionInTransit.ClientBroker
 		}
+
+		// NOTE: EncryptionAtRestKMSKeyArn started to accept xp reference and selector in the new API
+		// target.Spec.ForProvider.EncryptionInfo[0].EncryptionAtRestKMSKeyArnRef
+		// target.Spec.ForProvider.EncryptionInfo[0].EncryptionAtRestKMSKeyArnSelector
 	}
 	if source.Spec.ForProvider.LoggingInfo != nil {
 		target.Spec.ForProvider.LoggingInfo = make([]targetv1beta1.LoggingInfoParameters, 1)

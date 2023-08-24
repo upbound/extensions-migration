@@ -39,12 +39,18 @@ func PtrFromString(s string) *string {
 
 // PtrFloat64FromInt32 returns the parameter of the type int32 in the pointer type.
 func PtrFloat64FromInt32(i *int32) *float64 {
+	if i == nil {
+		return nil
+	}
 	a := float64(*i)
 	return &a
 }
 
 // PtrFloat64FromInt64 returns the parameter of the type int64 in the pointer type.
 func PtrFloat64FromInt64(i *int64) *float64 {
+	if i == nil {
+		return nil
+	}
 	a := float64(*i)
 	return &a
 }
