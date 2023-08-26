@@ -239,15 +239,24 @@ func (pc *ProviderPkgFamilyConfigParameters) ProviderPackageV1(s xppkgv1.Provide
 }
 
 type ProviderPkgFamilyParameters struct {
-	FamilyVersion        string
-	Monolith             string
-	CompositionProcessor *compositionPreProcessor
+	FamilyVersion            string
+	Monolith                 string
+	CompositionProcessor     *compositionPreProcessor
+	ManagedResourceProcessor *mRPreProcessor
 }
 
 func (pf *ProviderPkgFamilyParameters) ProviderPackageV1(p xppkgv1.Provider) ([]xppkgv1.Provider, error) {
 	ap := xppkgv1.ManualActivation
 	var providers []xppkgv1.Provider
-	for providerName := range pf.CompositionProcessor.ProviderNames {
+	var processorMap map[string]struct{}
+
+	if pf.CompositionProcessor != nil {
+		processorMap = pf.CompositionProcessor.ProviderNames
+	} else {
+		processorMap = pf.ManagedResourceProcessor.ProviderNames
+	}
+
+	for providerName := range processorMap {
 		if fmt.Sprintf("provider-%s", extractServiceProvider(providerName)) != pf.Monolith {
 			continue
 		}

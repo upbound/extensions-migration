@@ -52,6 +52,9 @@ const (
 	providerAwsChoice   = "provider-aws"
 	providerAzureChoice = "provider-azure"
 	providerGcpChoice   = "provider-gcp"
+
+	configurationMode = "configuration"
+	justMrMode        = "managed"
 )
 
 var monolithicToFamily = map[string]string{
@@ -63,16 +66,23 @@ var monolithicToFamily = map[string]string{
 // Options represents the available options for the family-migrator.
 type Options struct {
 	Generate struct {
-		RegistryOrg                string `name:"regorg" help:"<registry host>/<organization> for the provider family packages."`
-		AWSFamilyVersion           string `name:"aws-family-version" help:"Version of the AWS provider family."`
-		AzureFamilyVersion         string `name:"azure-family-version" help:"Version of the Azure provider family."`
-		GCPFamilyVersion           string `name:"gcp-family-version" help:"Version of the GCP provider family."`
-		SourceConfigurationPackage string `name:"source-configuration-package" help:"Migration source Configuration package's URL." survey:"source-configuration-package"`
-		TargetConfigurationPackage string `name:"target-configuration-package" help:"Migration target Configuration package's URL." survey:"target-configuration-package"`
+		Configuration struct {
+			SourceConfigurationPackage string `name:"source-configuration-package" help:"Migration source Configuration package's URL." survey:"source-configuration-package"`
+			TargetConfigurationPackage string `name:"target-configuration-package" help:"Migration target Configuration package's URL." survey:"target-configuration-package"`
 
-		PackageRoot   string `name:"package-root" help:"Source directory for the Crossplane Configuration package." survey:"package-root"`
-		ExamplesRoot  string `name:"examples-root" help:"Path to Crossplane package examples directory." survey:"examples-root"`
-		PackageOutput string `name:"package-output" help:"Path to store the updated configuration package." survey:"package-output"`
+			PackageRoot   string `name:"package-root" help:"Source directory for the Crossplane Configuration package." survey:"package-root"`
+			ExamplesRoot  string `name:"examples-root" help:"Path to Crossplane package examples directory." survey:"examples-root"`
+			PackageOutput string `name:"package-output" help:"Path to store the updated configuration package." survey:"package-output"`
+		} `kong:"cmd"`
+
+		Managed struct {
+			resourcePath string
+		} `kong:"cmd"`
+
+		RegistryOrg        string `name:"regorg" help:"<registry host>/<organization> for the provider family packages."`
+		AWSFamilyVersion   string `name:"aws-family-version" help:"Version of the AWS provider family."`
+		AzureFamilyVersion string `name:"azure-family-version" help:"Version of the Azure provider family."`
+		GCPFamilyVersion   string `name:"gcp-family-version" help:"Version of the GCP provider family."`
 
 		KubeConfig string `name:"kubeconfig" help:"Path to the kubeconfig to use."`
 	} `kong:"cmd"`
@@ -100,87 +110,55 @@ func main() {
 	kongCtx.FatalIfErrorf(err, "Failed to get the absolute path for the migration plan output: %s", opts.PlanPath)
 	planDir := filepath.Dir(absPath)
 
-	switch kongCtx.Command() {
+	c := strings.Split(kongCtx.Command(), " ")
+	switch c[0] {
 	case "generate":
-		getGenerateInputs(kongCtx, planDir, opts)
-		generatePlan(kongCtx, opts, planDir)
+		mode := c[1]
+		getGenerateInputs(kongCtx, planDir, opts, mode)
+		generatePlan(kongCtx, opts, planDir, mode)
 	case "execute":
 		executePlan(kongCtx, planDir, opts)
 	}
 }
 
-func generatePlan(kongCtx *kong.Context, opts *Options, planDir string) {
+func generatePlan(kongCtx *kong.Context, opts *Options, planDir string, mode string) {
 	r := migration.NewRegistry(runtime.NewScheme())
-	err := r.AddCrossplanePackageTypes()
-	kongCtx.FatalIfErrorf(err, "Failed to register the Provider package types with the migration registry")
-	cp := configuration.NewCompositionPreProcessor()
-	r.RegisterPreProcessor(migration.CategoryComposition, migration.PreProcessor(cp.GetSSOPNameFromComposition))
-	r.RegisterConfigurationMetadataConverter(migration.AllConfigurations, &configuration.ConfigMetaParameters{
-		FamilyVersion:        opts.Generate.AWSFamilyVersion,
-		Monolith:             "provider-aws",
-		CompositionProcessor: cp,
-	})
-	r.RegisterConfigurationMetadataConverter(migration.AllConfigurations, &configuration.ConfigMetaParameters{
-		FamilyVersion:        opts.Generate.AzureFamilyVersion,
-		Monolith:             "provider-azure",
-		CompositionProcessor: cp,
-	})
-	r.RegisterConfigurationMetadataConverter(migration.AllConfigurations, &configuration.ConfigMetaParameters{
-		FamilyVersion:        opts.Generate.GCPFamilyVersion,
-		Monolith:             "provider-gcp",
-		CompositionProcessor: cp,
-	})
-	r.RegisterConfigurationPackageConverter(regexp.MustCompile(opts.Generate.SourceConfigurationPackage), &configuration.ConfigPkgParameters{
-		PackageURL: opts.Generate.TargetConfigurationPackage,
-	})
-	// TODO: should we also handle missing registry (xpkg.upbound.io),
-	// i.e., is it the default?
-	// register converters for the family config packages
-	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-aws:.+`), &configuration.ProviderPkgFamilyConfigParameters{
-		FamilyVersion: opts.Generate.AWSFamilyVersion,
-	})
-	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-azure:.+`), &configuration.ProviderPkgFamilyConfigParameters{
-		FamilyVersion: opts.Generate.AzureFamilyVersion,
-	})
-	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-gcp:.+`), &configuration.ProviderPkgFamilyConfigParameters{
-		FamilyVersion: opts.Generate.GCPFamilyVersion,
-	})
-	// register converters for the family resource packages
-	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-aws:.+`), &configuration.ProviderPkgFamilyParameters{
-		FamilyVersion:        opts.Generate.AWSFamilyVersion,
-		Monolith:             "provider-aws",
-		CompositionProcessor: cp,
-	})
-	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-azure:.+`), &configuration.ProviderPkgFamilyParameters{
-		FamilyVersion:        opts.Generate.AzureFamilyVersion,
-		Monolith:             "provider-azure",
-		CompositionProcessor: cp,
-	})
-	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-gcp:.+`), &configuration.ProviderPkgFamilyParameters{
-		FamilyVersion:        opts.Generate.GCPFamilyVersion,
-		Monolith:             "provider-gcp",
-		CompositionProcessor: cp,
-	})
-	r.RegisterPackageLockConverter(migration.CrossplaneLockName, &configuration.LockParameters{
-		PackageURL: opts.Generate.SourceConfigurationPackage,
-	})
-	kongCtx.FatalIfErrorf(r.AddCompositionTypes(), "Failed to register the Crossplane Composition types with the migration registry")
 
-	fsSource, err := migration.NewFileSystemSource(opts.Generate.PackageRoot)
-	kongCtx.FatalIfErrorf(err, "Failed to initialize the migration FileSystem source from path: %s", opts.Generate.PackageRoot)
+	switch mode {
+	case configurationMode:
+		if err := registerConfigurationPackageConverters(opts, r); err != nil {
+			kongCtx.FatalIfErrorf(err, "Failed to register converters")
+		}
+	case justMrMode:
+		if err := registerManagedResourceConverters(opts, r); err != nil {
+			kongCtx.FatalIfErrorf(err, "Failed to register converters")
+		}
+	}
 
 	if len(opts.Generate.KubeConfig) == 0 {
 		homeDir, err := os.UserHomeDir()
 		kongCtx.FatalIfErrorf(err, "Failed to get user's home")
 		opts.Generate.KubeConfig = filepath.Join(homeDir, defaultKubeConfig)
 	}
-	kubeSource, err := migration.NewKubernetesSourceFromKubeConfig(opts.Generate.KubeConfig, migration.WithRegistry(r), migration.WithCategories([]migration.Category{migration.CategoryManaged}))
-	kongCtx.FatalIfErrorf(err, "Failed to initialize the migration Kubernetes source from kubeconfig: %s", opts.Generate.KubeConfig)
 
-	pg := migration.NewPlanGenerator(r, nil, migration.NewFileSystemTarget(migration.WithParentDirectory(planDir)), migration.WithEnableConfigurationMigrationSteps(), migration.WithMultipleSources(fsSource, kubeSource), migration.WithSkipGVKs(schema.GroupVersionKind{}))
+	sources, err := initializeSources(mode, r, opts)
+	if err != nil {
+		kongCtx.FatalIfErrorf(err, "Failed to initialize sources")
+	}
+
+	pgOpts := []migration.PlanGeneratorOption{
+		migration.WithMultipleSources(sources...),
+		migration.WithSkipGVKs(schema.GroupVersionKind{}),
+		migration.WithEnableConfigurationMigrationSteps(),
+	}
+
+	pg := migration.NewPlanGenerator(r, nil, migration.NewFileSystemTarget(migration.WithParentDirectory(planDir)), pgOpts...)
 	kongCtx.FatalIfErrorf(pg.GeneratePlan(), "Failed to generate the migration plan for the provider families")
 
-	setPkgParameters(&pg.Plan, *opts)
+	if mode == configurationMode {
+		setPkgParameters(&pg.Plan, *opts)
+	}
+
 	buff, err := yaml.Marshal(pg.Plan)
 	kongCtx.FatalIfErrorf(err, "Failed to marshal the migration plan to YAML")
 	kongCtx.FatalIfErrorf(os.WriteFile(opts.PlanPath, buff, 0600), "Failed to store the migration plan at path: %s", opts.PlanPath)
@@ -194,6 +172,23 @@ func generatePlan(kongCtx *kong.Context, opts *Options, planDir string) {
 	if moveExecution {
 		executePlan(kongCtx, planDir, opts)
 	}
+}
+
+func initializeSources(mode string, r *migration.Registry, opts *Options) ([]migration.Source, error) {
+	kubeSource, err := migration.NewKubernetesSourceFromKubeConfig(opts.Generate.KubeConfig, migration.WithRegistry(r), migration.WithCategories([]migration.Category{migration.CategoryManaged}))
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to initialize the migration Kubernetes source from kubeconfig: %s", opts.Generate.KubeConfig)
+	}
+	sources := []migration.Source{kubeSource}
+
+	if mode == configurationMode {
+		fsSource, err := migration.NewFileSystemSource(opts.Generate.Configuration.PackageRoot)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Failed to initialize the migration FileSystem source from path: %s", opts.Generate.Configuration.PackageRoot)
+		}
+		return []migration.Source{fsSource, kubeSource}, nil
+	}
+	return sources, nil
 }
 
 func executePlan(kongCtx *kong.Context, planDir string, opts *Options) {
@@ -230,17 +225,17 @@ func setPkgParameters(plan *migration.Plan, opts Options) {
 		// to introduce the concept of a migration Scenario that
 		// encapsulated both the converters and the steps involved.
 		if s.Name == "push-configuration" || s.Name == "build-configuration" {
-			s.Exec.Args[1] = strings.ReplaceAll(s.Exec.Args[1], "{{TARGET_CONFIGURATION_PACKAGE}}", opts.Generate.TargetConfigurationPackage)
-			s.Exec.Args[1] = strings.ReplaceAll(s.Exec.Args[1], "{{PKG_PATH}}", opts.Generate.PackageOutput)
-			s.Exec.Args[1] = strings.ReplaceAll(s.Exec.Args[1], "{{PKG_ROOT}}", opts.Generate.PackageRoot)
-			s.Exec.Args[1] = strings.ReplaceAll(s.Exec.Args[1], "{{EXAMPLES_ROOT}}", opts.Generate.ExamplesRoot)
+			s.Exec.Args[1] = strings.ReplaceAll(s.Exec.Args[1], "{{TARGET_CONFIGURATION_PACKAGE}}", opts.Generate.Configuration.TargetConfigurationPackage)
+			s.Exec.Args[1] = strings.ReplaceAll(s.Exec.Args[1], "{{PKG_PATH}}", opts.Generate.Configuration.PackageOutput)
+			s.Exec.Args[1] = strings.ReplaceAll(s.Exec.Args[1], "{{PKG_ROOT}}", opts.Generate.Configuration.PackageRoot)
+			s.Exec.Args[1] = strings.ReplaceAll(s.Exec.Args[1], "{{EXAMPLES_ROOT}}", opts.Generate.Configuration.ExamplesRoot)
 			migration.AddManualExecution(&s)
 			plan.Spec.Steps[i] = s
 		}
 	}
 }
 
-func getGenerateInputs(kongCtx *kong.Context, planDir string, opts *Options) {
+func getGenerateInputs(kongCtx *kong.Context, planDir string, opts *Options, mode string) {
 	registryOrgValidator := func(ans interface{}) error {
 		re := regexp.MustCompile(`(?i)([a-z0-9]+/[a-z0-9]+)`)
 		if !re.MatchString(ans.(string)) {
@@ -293,45 +288,47 @@ func getGenerateInputs(kongCtx *kong.Context, planDir string, opts *Options) {
 		}
 	}
 
-	var packageAndPathQuestions []*survey.Question
-	if opts.Generate.SourceConfigurationPackage == "" {
-		packageAndPathQuestions = append(packageAndPathQuestions, &survey.Question{
-			Name: "source-configuration-package",
-			Prompt: &survey.Input{
-				Message: "Please enter the URL of the migration source Configuration package",
-				Help:    "Example: xpkg.upbound.io/upbound/platform-ref-gcp:v0.3.0",
-			},
-		})
+	if mode == configurationMode {
+		var packageAndPathQuestions []*survey.Question
+		if opts.Generate.Configuration.SourceConfigurationPackage == "" {
+			packageAndPathQuestions = append(packageAndPathQuestions, &survey.Question{
+				Name: "source-configuration-package",
+				Prompt: &survey.Input{
+					Message: "Please enter the URL of the migration source Configuration package",
+					Help:    "Example: xpkg.upbound.io/upbound/platform-ref-gcp:v0.3.0",
+				},
+			})
+		}
+		if opts.Generate.Configuration.TargetConfigurationPackage == "" {
+			packageAndPathQuestions = append(packageAndPathQuestions, &survey.Question{
+				Name: "target-configuration-package",
+				Prompt: &survey.Input{
+					Message: "Please enter the URL of the migration target Configuration package",
+					Help:    "Example: xpkg.upbound.io/upbound/platform-ref-gcp:v0.4.0",
+				},
+			})
+		}
+		if opts.Generate.Configuration.PackageRoot == "" {
+			packageAndPathQuestions = append(packageAndPathQuestions, &survey.Question{
+				Name: "package-root",
+				Prompt: &survey.Input{
+					Message: "Please specify the source directory for the Crossplane Configuration package",
+				},
+			})
+		}
+		if opts.Generate.Configuration.ExamplesRoot == "" {
+			packageAndPathQuestions = append(packageAndPathQuestions, &survey.Question{
+				Name: "examples-root",
+				Prompt: &survey.Input{
+					Message: "Please specify the path to the directory containing the Crossplane package examples",
+				},
+			})
+		}
+		if opts.Generate.Configuration.PackageOutput == "" {
+			opts.Generate.Configuration.PackageOutput = filepath.Join(planDir, "updated-package.pkg")
+		}
+		kongCtx.FatalIfErrorf(survey.Ask(packageAndPathQuestions, &opts.Generate.Configuration))
 	}
-	if opts.Generate.TargetConfigurationPackage == "" {
-		packageAndPathQuestions = append(packageAndPathQuestions, &survey.Question{
-			Name: "target-configuration-package",
-			Prompt: &survey.Input{
-				Message: "Please enter the URL of the migration target Configuration package",
-				Help:    "Example: xpkg.upbound.io/upbound/platform-ref-gcp:v0.4.0",
-			},
-		})
-	}
-	if opts.Generate.PackageRoot == "" {
-		packageAndPathQuestions = append(packageAndPathQuestions, &survey.Question{
-			Name: "package-root",
-			Prompt: &survey.Input{
-				Message: "Please specify the source directory for the Crossplane Configuration package",
-			},
-		})
-	}
-	if opts.Generate.ExamplesRoot == "" {
-		packageAndPathQuestions = append(packageAndPathQuestions, &survey.Question{
-			Name: "examples-root",
-			Prompt: &survey.Input{
-				Message: "Please specify the path to the directory containing the Crossplane package examples",
-			},
-		})
-	}
-	if opts.Generate.PackageOutput == "" {
-		opts.Generate.PackageOutput = filepath.Join(planDir, "updated-package.pkg")
-	}
-	kongCtx.FatalIfErrorf(survey.Ask(packageAndPathQuestions, &opts.Generate))
 }
 
 func getCommonInputs(kongCtx *kong.Context, opts *Options) {
@@ -381,6 +378,101 @@ func askExecutionSteps(kongCtx *kong.Context, plan *migration.Plan, opts *Option
 	default: // "No Interaction"
 		return false
 	}
+}
+
+func registerManagedResourceConverters(opts *Options, r *migration.Registry) error {
+	if err := r.AddCrossplanePackageTypes(); err != nil {
+		return errors.Wrap(err, "Failed to register the Provider package types with the migration registry")
+	}
+	mp := configuration.NewMRPreProcessor()
+	r.RegisterPreProcessor(migration.CategoryManaged, migration.PreProcessor(mp.GetSSOPNameFromManagedResource))
+	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-aws:.+`), &configuration.ProviderPkgFamilyConfigParameters{
+		FamilyVersion: opts.Generate.AWSFamilyVersion,
+	})
+	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-azure:.+`), &configuration.ProviderPkgFamilyConfigParameters{
+		FamilyVersion: opts.Generate.AzureFamilyVersion,
+	})
+	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-gcp:.+`), &configuration.ProviderPkgFamilyConfigParameters{
+		FamilyVersion: opts.Generate.GCPFamilyVersion,
+	})
+	// register converters for the family resource packages
+	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-aws:.+`), &configuration.ProviderPkgFamilyParameters{
+		FamilyVersion:            opts.Generate.AWSFamilyVersion,
+		Monolith:                 "provider-aws",
+		ManagedResourceProcessor: mp,
+	})
+	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-azure:.+`), &configuration.ProviderPkgFamilyParameters{
+		FamilyVersion:            opts.Generate.AzureFamilyVersion,
+		Monolith:                 "provider-azure",
+		ManagedResourceProcessor: mp,
+	})
+	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-gcp:.+`), &configuration.ProviderPkgFamilyParameters{
+		FamilyVersion:            opts.Generate.GCPFamilyVersion,
+		Monolith:                 "provider-gcp",
+		ManagedResourceProcessor: mp,
+	})
+	return nil
+}
+
+func registerConfigurationPackageConverters(opts *Options, r *migration.Registry) error {
+	if err := r.AddCrossplanePackageTypes(); err != nil {
+		return errors.Wrap(err, "Failed to register the Provider package types with the migration registry")
+	}
+	cp := configuration.NewCompositionPreProcessor()
+	r.RegisterPreProcessor(migration.CategoryComposition, migration.PreProcessor(cp.GetSSOPNameFromComposition))
+	r.RegisterConfigurationMetadataConverter(migration.AllConfigurations, &configuration.ConfigMetaParameters{
+		FamilyVersion:        opts.Generate.AWSFamilyVersion,
+		Monolith:             "provider-aws",
+		CompositionProcessor: cp,
+	})
+	r.RegisterConfigurationMetadataConverter(migration.AllConfigurations, &configuration.ConfigMetaParameters{
+		FamilyVersion:        opts.Generate.AzureFamilyVersion,
+		Monolith:             "provider-azure",
+		CompositionProcessor: cp,
+	})
+	r.RegisterConfigurationMetadataConverter(migration.AllConfigurations, &configuration.ConfigMetaParameters{
+		FamilyVersion:        opts.Generate.GCPFamilyVersion,
+		Monolith:             "provider-gcp",
+		CompositionProcessor: cp,
+	})
+	r.RegisterConfigurationPackageConverter(regexp.MustCompile(opts.Generate.Configuration.SourceConfigurationPackage), &configuration.ConfigPkgParameters{
+		PackageURL: opts.Generate.Configuration.TargetConfigurationPackage,
+	})
+	// TODO: should we also handle missing registry (xpkg.upbound.io),
+	// i.e., is it the default?
+	// register converters for the family config packages
+	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-aws:.+`), &configuration.ProviderPkgFamilyConfigParameters{
+		FamilyVersion: opts.Generate.AWSFamilyVersion,
+	})
+	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-azure:.+`), &configuration.ProviderPkgFamilyConfigParameters{
+		FamilyVersion: opts.Generate.AzureFamilyVersion,
+	})
+	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-gcp:.+`), &configuration.ProviderPkgFamilyConfigParameters{
+		FamilyVersion: opts.Generate.GCPFamilyVersion,
+	})
+	// register converters for the family resource packages
+	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-aws:.+`), &configuration.ProviderPkgFamilyParameters{
+		FamilyVersion:        opts.Generate.AWSFamilyVersion,
+		Monolith:             "provider-aws",
+		CompositionProcessor: cp,
+	})
+	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-azure:.+`), &configuration.ProviderPkgFamilyParameters{
+		FamilyVersion:        opts.Generate.AzureFamilyVersion,
+		Monolith:             "provider-azure",
+		CompositionProcessor: cp,
+	})
+	r.RegisterProviderPackageConverter(regexp.MustCompile(`xpkg.upbound.io/upbound/provider-gcp:.+`), &configuration.ProviderPkgFamilyParameters{
+		FamilyVersion:        opts.Generate.GCPFamilyVersion,
+		Monolith:             "provider-gcp",
+		CompositionProcessor: cp,
+	})
+	r.RegisterPackageLockConverter(migration.CrossplaneLockName, &configuration.LockParameters{
+		PackageURL: opts.Generate.Configuration.SourceConfigurationPackage,
+	})
+	if err := r.AddCompositionTypes(); err != nil {
+		return errors.Wrap(err, "Failed to register the Crossplane Composition types with the migration registry")
+	}
+	return nil
 }
 
 func getFamilyProviderVersions(kongCtx *kong.Context, providerName string) []interface{} {
