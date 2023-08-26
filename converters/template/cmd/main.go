@@ -41,7 +41,7 @@ func main() {
 	var (
 		app            = kingpin.New(filepath.Base(os.Args[0]), "Upbound migration plan generator for migrating Kubernetes objects from community providers to official providers.").DefaultEnvars()
 		planPath       = app.Flag("plan-path", "Path where the generated migration plan will be stored").Short('p').Default("migration_plan.yaml").String()
-		sourcePath     = app.Flag("source-path", "Path of the root directory for the filesystem source").Short('s').String()
+		sourcePath     = app.Flag("source-path", "Path of the root directory for the filesystem source. If this flag is not specified, Kubernetes source will be used.").Short('s').String()
 		kubeconfigPath = app.Flag("kubeconfig", "Path of the kubernetes config file. Defaults to ~/.kube/config ").String()
 	)
 	if len(*kubeconfigPath) == 0 {
@@ -76,7 +76,7 @@ func main() {
 	// Initialize Source for reading resources
 	var source migration.Source
 	var err error
-	if len(*sourcePath) >= 1 { // FileSystem Source
+	if len(*sourcePath) > 0 { // FileSystem Source
 		fmt.Println("Using filesystem source")
 		source, err = migration.NewFileSystemSource(*sourcePath)
 		kingpin.FatalIfError(err, "Failed to initialize a Filesystem source")
