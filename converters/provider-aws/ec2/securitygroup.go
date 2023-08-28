@@ -20,10 +20,11 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	v1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	"github.com/pkg/errors"
-	"github.com/upbound/extensions-migration/converters/common"
-	provider_aws "github.com/upbound/extensions-migration/converters/provider-aws"
 	targetv1beta1 "github.com/upbound/provider-aws/apis/ec2/v1beta1"
 	"github.com/upbound/upjet/pkg/migration"
+
+	"github.com/upbound/extensions-migration/converters/common"
+	providerawscommon "github.com/upbound/extensions-migration/converters/provider-aws/common"
 )
 
 func SecurityGroupResource(mg resource.Managed) ([]resource.Managed, error) {
@@ -90,7 +91,7 @@ func SecurityGroupResource(mg resource.Managed) ([]resource.Managed, error) {
 }
 
 func SecurityGroupComposition(sourceTemplate v1.ComposedTemplate, convertedTemplates ...*v1.ComposedTemplate) error {
-	patchesToAdd, err := provider_aws.ConvertComposedTemplateTags(sourceTemplate)
+	patchesToAdd, err := providerawscommon.ConvertComposedTemplateTags(sourceTemplate)
 	if err != nil {
 		return errors.Wrap(err, "failed to convert tags")
 	}
