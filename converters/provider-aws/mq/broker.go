@@ -20,6 +20,7 @@ import (
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/pkg/errors"
+	"github.com/upbound/extensions-migration/converters/common"
 	targetv1beta1 "github.com/upbound/provider-aws/apis/mq/v1beta1"
 	"github.com/upbound/upjet/pkg/migration"
 	"strconv"
@@ -56,9 +57,7 @@ func BrokerResource(mg resource.Managed) ([]resource.Managed, error) {
 		// target.Spec.ForProvider.Configuration[0].IDRef
 		// target.Spec.ForProvider.Configuration[0].IDSelector
 		if source.Spec.ForProvider.Configuration.Revision != nil {
-			// TODO: use utility function for *int64 -> *float64 conversions
-			revision := float64(*source.Spec.ForProvider.Configuration.Revision)
-			target.Spec.ForProvider.Configuration[0].Revision = &revision
+			target.Spec.ForProvider.Configuration[0].Revision = common.PtrFloat64FromInt64(source.Spec.ForProvider.Configuration.Revision)
 		}
 	}
 
@@ -85,11 +84,18 @@ func BrokerResource(mg resource.Managed) ([]resource.Managed, error) {
 			UserSearchSubtree:               sourceLsm.UserSearchSubtree,
 		}
 		if source.Spec.ForProvider.LDAPServerMetadata.ServiceAccountPassword != nil {
-			// TODO: generate secret MR
-			// TODO: deduce secret name & ns
+			// In the target API, LDAP server service account password has to be specified via a secret reference
+			// after migration, consumers need to create the secret in the broker MR's namespace
+			// with name "<broker-mr-name>-mq-broker-ldap-creds" with secret data key "password" which includes the password
+			// or alternatively,
+			// after migration completes, consumers should manually update their MR spec manually
+			// and change the secret ref to the desired secret name & namespace, if they do not want to use the
+			// predefined secret name
+			// TODO: consider reporting secret creation requirement at the migration tooling logs
+			// or document it
 			ldapServiceAccountSecretSelector := &v1.SecretKeySelector{
 				SecretReference: v1.SecretReference{
-					Name:      fmt.Sprintf("%s-ldap-sa-creds", source.Name),
+					Name:      fmt.Sprintf("%s-mq-broker-ldap-creds", source.Name),
 					Namespace: source.Namespace,
 				},
 				Key: "password",
@@ -139,13 +145,17 @@ func BrokerResource(mg resource.Managed) ([]resource.Managed, error) {
 		}
 
 	}
+	// new parameter introduced at target API
+	// in the source API, the name of MR in k8s was used as brokerName
+	// target API expects it as a required parameter explicitly
+	target.Spec.ForProvider.BrokerName = &source.Name
 
 	// TODO: parameter removed at target
 	// ? = source.Spec.ForProvider.CreatorRequestID
 
-	// TODO: new parameter at target
+	// no-op: new parameter at target
+	// optional, keep the default or current status
 	// target.Spec.ForProvider.ApplyImmediately
-	// target.Spec.ForProvider.BrokerName
 
 	return brokerMRs, nil
 }
