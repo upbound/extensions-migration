@@ -18,6 +18,7 @@ import (
 	srcv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/apigatewayv2/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/pkg/errors"
+	"github.com/upbound/extensions-migration/converters/common"
 	targetv1beta1 "github.com/upbound/provider-aws/apis/apigatewayv2/v1beta1"
 	"github.com/upbound/upjet/pkg/migration"
 )
@@ -50,9 +51,7 @@ func StageResource(mg resource.Managed) ([]resource.Managed, error) {
 		target.Spec.ForProvider.DefaultRouteSettings[0].DataTraceEnabled = source.Spec.ForProvider.DefaultRouteSettings.DataTraceEnabled
 		target.Spec.ForProvider.DefaultRouteSettings[0].DetailedMetricsEnabled = source.Spec.ForProvider.DefaultRouteSettings.DetailedMetricsEnabled
 		target.Spec.ForProvider.DefaultRouteSettings[0].LoggingLevel = source.Spec.ForProvider.DefaultRouteSettings.LoggingLevel
-		// TODO: use utility function for *int64 -> *float64 conversions
-		throttlingBurstLimit := float64(*source.Spec.ForProvider.DefaultRouteSettings.ThrottlingBurstLimit)
-		target.Spec.ForProvider.DefaultRouteSettings[0].ThrottlingBurstLimit = &throttlingBurstLimit
+		target.Spec.ForProvider.DefaultRouteSettings[0].ThrottlingBurstLimit = common.PtrFloat64FromInt64(source.Spec.ForProvider.DefaultRouteSettings.ThrottlingBurstLimit)
 		target.Spec.ForProvider.DefaultRouteSettings[0].ThrottlingRateLimit = source.Spec.ForProvider.DefaultRouteSettings.ThrottlingRateLimit
 	}
 
@@ -78,9 +77,7 @@ func StageResource(mg resource.Managed) ([]resource.Managed, error) {
 				ThrottlingBurstLimit:   nil,
 				ThrottlingRateLimit:    rs.ThrottlingRateLimit,
 			}
-			// TODO: use utility function for *int64 -> *float64 conversions
-			burstLimit := float64(*rs.ThrottlingBurstLimit)
-			targetRsp.ThrottlingBurstLimit = &burstLimit
+			targetRsp.ThrottlingBurstLimit = common.PtrFloat64FromInt64(rs.ThrottlingBurstLimit)
 			target.Spec.ForProvider.RouteSettings = append(target.Spec.ForProvider.RouteSettings, targetRsp)
 		}
 	}

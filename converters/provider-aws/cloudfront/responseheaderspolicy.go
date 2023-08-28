@@ -18,6 +18,7 @@ import (
 	srcv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/cloudfront/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/pkg/errors"
+	"github.com/upbound/extensions-migration/converters/common"
 	targetv1beta1 "github.com/upbound/provider-aws/apis/cloudfront/v1beta1"
 	"github.com/upbound/upjet/pkg/migration"
 )
@@ -69,9 +70,7 @@ func ResponseHeadersPolicyResource(mg resource.Managed) ([]resource.Managed, err
 			targetCcp.AccessControlExposeHeaders = make([]targetv1beta1.AccessControlExposeHeadersParameters, 1)
 			targetCcp.AccessControlExposeHeaders[0].Items = sourceCc.AccessControlExposeHeaders.Items
 		}
-		// TODO: use utility function for *int64 -> *float64 conversions
-		maxAge := float64(*sourceCc.AccessControlMaxAgeSec)
-		targetCcp.AccessControlMaxAgeSec = &maxAge
+		targetCcp.AccessControlMaxAgeSec = common.PtrFloat64FromInt64(sourceCc.AccessControlMaxAgeSec)
 
 		target.Spec.ForProvider.CorsConfig[0] = targetCcp
 	}
@@ -133,9 +132,7 @@ func ResponseHeadersPolicyResource(mg resource.Managed) ([]resource.Managed, err
 		if sourceShc.StrictTransportSecurity != nil {
 			targetShcp.StrictTransportSecurity = make([]targetv1beta1.StrictTransportSecurityParameters, 1)
 			if sourceShc.StrictTransportSecurity.AccessControlMaxAgeSec != nil {
-				// TODO: use utility function for *int64 -> *float64 conversions
-				acMaxAge := float64(*sourceShc.StrictTransportSecurity.AccessControlMaxAgeSec)
-				targetShcp.StrictTransportSecurity[0].AccessControlMaxAgeSec = &acMaxAge
+				targetShcp.StrictTransportSecurity[0].AccessControlMaxAgeSec = common.PtrFloat64FromInt64(sourceShc.StrictTransportSecurity.AccessControlMaxAgeSec)
 			}
 			targetShcp.StrictTransportSecurity[0].IncludeSubdomains = sourceShc.StrictTransportSecurity.IncludeSubdomains
 			targetShcp.StrictTransportSecurity[0].Override = sourceShc.StrictTransportSecurity.Override

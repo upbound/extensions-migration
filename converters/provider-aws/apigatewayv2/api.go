@@ -18,6 +18,7 @@ import (
 	srcv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/apigatewayv2/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/pkg/errors"
+	"github.com/upbound/extensions-migration/converters/common"
 	targetv1beta1 "github.com/upbound/provider-aws/apis/apigatewayv2/v1beta1"
 	"github.com/upbound/upjet/pkg/migration"
 )
@@ -46,9 +47,7 @@ func APIResource(mg resource.Managed) ([]resource.Managed, error) {
 			MaxAge:           nil,
 		}
 		if source.Spec.ForProvider.CORSConfiguration.MaxAge != nil {
-			// TODO: use utility function for *int64 -> *float64 conversions
-			maxAge := float64(*source.Spec.ForProvider.CORSConfiguration.MaxAge)
-			target.Spec.ForProvider.CorsConfiguration[0].MaxAge = &maxAge
+			target.Spec.ForProvider.CorsConfiguration[0].MaxAge = common.PtrFloat64FromInt64(source.Spec.ForProvider.CORSConfiguration.MaxAge)
 		}
 
 	}
