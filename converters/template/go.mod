@@ -7,10 +7,10 @@ require (
 	github.com/upbound/extensions-migration v0.1.0-rc.1.0.20230815112541-eb63a5c5393e
 	github.com/upbound/extensions-migration/converters/provider-aws v0.0.0-20230815094445-f6499b966d7f
 	github.com/upbound/provider-aws v0.38.0
-	github.com/upbound/upjet v0.10.0-rc.0.0.20230815092629-6e0d116c3666
+	github.com/upbound/upjet v0.11.0-rc.0.0.20230831202621-14cd59c9986d
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
+	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apimachinery v0.27.3
-	sigs.k8s.io/yaml v1.3.0
 )
 
 require (
@@ -128,7 +128,6 @@ require (
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/api v0.27.3 // indirect
 	k8s.io/apiextensions-apiserver v0.27.3 // indirect
 	k8s.io/cli-runtime v0.26.3 // indirect
@@ -143,6 +142,7 @@ require (
 	sigs.k8s.io/kustomize/api v0.12.1 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.13.9 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
+	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
 replace github.com/upbound/extensions-migration => ../../../extensions-migration
