@@ -28,8 +28,9 @@ import (
 	targetapis "github.com/upbound/provider-aws/apis"
 	"github.com/upbound/upjet/pkg/migration"
 	"gopkg.in/alecthomas/kingpin.v2"
+	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/yaml"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/upbound/extensions-migration/converters/common"
 	provideraws "github.com/upbound/extensions-migration/converters/provider-aws"
@@ -43,6 +44,7 @@ func main() {
 		planPath       = app.Flag("plan-path", "Path where the generated migration plan will be stored").Short('p').Default("migration_plan.yaml").String()
 		sourcePath     = app.Flag("source-path", "Path of the root directory for the filesystem source. If this flag is not specified, Kubernetes source will be used.").Short('s').String()
 		kubeconfigPath = app.Flag("kubeconfig", "Path of the kubernetes config file. Defaults to ~/.kube/config ").String()
+		skipGVKsPath   = app.Flag("skip-gvks", "Path of the file containing the GVKs to skip").String()
 	)
 	if len(*kubeconfigPath) == 0 {
 		homeDir, err := os.UserHomeDir()
@@ -86,14 +88,61 @@ func main() {
 		kingpin.FatalIfError(err, "Failed to initialize a Kubernetes source")
 	}
 
+	// Calculate Abs Path for the migration plan and generated manifests
+	absPath, err := filepath.Abs(*planPath)
+	kingpin.FatalIfError(err, "Failed to get the absolute path for the migration plan output: %s", *planPath)
+	planDir := filepath.Dir(absPath)
+
 	// Initialize Target for writing resources
-	target := migration.NewFileSystemTarget()
+	target := migration.NewFileSystemTarget(migration.WithParentDirectory(planDir))
+
+	var skipGVKs []schema.GroupVersionKind
+	// Skipped GVKs
+	if *skipGVKsPath != "" {
+		skipGVKs, err = readSkipFile(*skipGVKsPath)
+		if err != nil {
+			kingpin.FatalIfError(err, "Failed to read skip GVK list")
+		}
+	}
+
 	// Generate Plan
-	pg := migration.NewPlanGenerator(registry, source, target)
+	pg := migration.PlanGenerator{}
+	switch source.(type) {
+	case *migration.FileSystemSource:
+		pg = migration.NewPlanGenerator(registry, source, target, migration.WithEnableOnlyFileSystemAPISteps(), migration.WithSkipGVKs(skipGVKs...))
+	case *migration.KubernetesSource:
+		pg = migration.NewPlanGenerator(registry, source, target, migration.WithSkipGVKs(skipGVKs...))
+	}
+
 	err = pg.GeneratePlan()
 	kingpin.FatalIfError(err, "Failed to generate the migration plan")
+
 	// Write plan to the target plan path
 	buff, err := yaml.Marshal(pg.Plan)
 	kingpin.FatalIfError(err, "Failed to marshal the migration plan into YAML")
 	kingpin.FatalIfError(os.WriteFile(*planPath, buff, 0600), "Failed to store the migration plan: %s", planPath)
+}
+
+func readSkipFile(path string) ([]schema.GroupVersionKind, error) {
+	buff, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var skipGVKs []schema.GroupVersionKind
+	var skipGVKMapSlice []map[string]string
+
+	if err := yaml.Unmarshal(buff, &skipGVKMapSlice); err != nil {
+		return nil, err
+	}
+
+	for _, skipGVK := range skipGVKMapSlice {
+		skipGVKs = append(skipGVKs, schema.GroupVersionKind{
+			Group:   skipGVK["group"],
+			Version: skipGVK["version"],
+			Kind:    skipGVK["kind"],
+		})
+	}
+
+	return skipGVKs, nil
 }

@@ -1,0 +1,6 @@
+- group:   tf.upbound.io
+  version: v1beta1
+  kind:    Workspace
+- group: test.extensions.com
+  version: v1alpha1
+  kind: Resource

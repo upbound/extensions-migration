@@ -411,8 +411,8 @@ github.com/tmccombs/hcl2json v0.3.3 h1:+DLNYqpWE0CsOQiEZu+OZm5ZBImake3wtITYxQ8uL
 github.com/tmccombs/hcl2json v0.3.3/go.mod h1:Y2chtz2x9bAeRTvSibVRVgbLJhLJXKlUeIvjeVdnm4w=
 github.com/upbound/provider-aws v0.38.0 h1:7e3djbXpm92tuVTWa83wue8/P3SyyBRUqpVGLSTxW2s=
 github.com/upbound/provider-aws v0.38.0/go.mod h1:3ghjoDmZKHcJp9Z1Ssz0Mb1k6Sx0yF4cj8qx/xILIrw=
-github.com/upbound/upjet v0.10.0-rc.0.0.20230815092629-6e0d116c3666 h1:hckZ5EDqoIEi7OKlQGgdF2TkNSApBUdM5cYjOeQlvYU=
-github.com/upbound/upjet v0.10.0-rc.0.0.20230815092629-6e0d116c3666/go.mod h1:2RXHgpIugCL/S/Use1QJAeVaev901RBeUByQh5gUtGk=
+github.com/upbound/upjet v0.11.0-rc.0.0.20230831202621-14cd59c9986d h1:Ur4i0oFCd9LUDI0ErD58q3+AhSlpqzcQhQCRqJj4cKA=
+github.com/upbound/upjet v0.11.0-rc.0.0.20230831202621-14cd59c9986d/go.mod h1:2RXHgpIugCL/S/Use1QJAeVaev901RBeUByQh5gUtGk=
 github.com/vmihailenco/msgpack v3.3.3+incompatible/go.mod h1:fy3FlTQTDXWkZ7Bh6AcGMlsjHatGryHQYUTf1ShIgkk=
 github.com/vmihailenco/msgpack v4.0.4+incompatible h1:dSLoQfGFAo3F6OoNhwUmLwVgaUXK79GlxNBwueZn0xI=
 github.com/vmihailenco/msgpack v4.0.4+incompatible/go.mod h1:fy3FlTQTDXWkZ7Bh6AcGMlsjHatGryHQYUTf1ShIgkk=
