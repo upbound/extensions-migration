@@ -17,6 +17,8 @@
 package provideraws
 
 import (
+	apigatewayv2v1alpha1 "github.com/crossplane-contrib/provider-aws/apis/apigatewayv2/v1alpha1"
+	apigatewayv2v1beta1 "github.com/crossplane-contrib/provider-aws/apis/apigatewayv2/v1beta1"
 	cachev1alpha1 "github.com/crossplane-contrib/provider-aws/apis/cache/v1alpha1"
 	cachev1beta1 "github.com/crossplane-contrib/provider-aws/apis/cache/v1beta1"
 	cloudfrontv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/cloudfront/v1alpha1"
@@ -34,6 +36,7 @@ import (
 	iamv1beta1 "github.com/crossplane-contrib/provider-aws/apis/iam/v1beta1"
 	kafkav1alpha1 "github.com/crossplane-contrib/provider-aws/apis/kafka/v1alpha1"
 	kmsv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/kms/v1alpha1"
+	mqv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/mq/v1alpha1"
 	rdsv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/rds/v1alpha1"
 	route53v1alpha1 "github.com/crossplane-contrib/provider-aws/apis/route53/v1alpha1"
 	route53resolvermanualv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/route53resolver/manualv1alpha1"
@@ -44,6 +47,7 @@ import (
 	sqsv1beta1 "github.com/crossplane-contrib/provider-aws/apis/sqs/v1beta1"
 	"github.com/upbound/upjet/pkg/migration"
 
+	"github.com/upbound/extensions-migration/converters/provider-aws/apigatewayv2"
 	"github.com/upbound/extensions-migration/converters/provider-aws/cloudfront"
 	"github.com/upbound/extensions-migration/converters/provider-aws/cloudwatchlogs"
 	"github.com/upbound/extensions-migration/converters/provider-aws/common"
@@ -56,6 +60,7 @@ import (
 	"github.com/upbound/extensions-migration/converters/provider-aws/iam"
 	"github.com/upbound/extensions-migration/converters/provider-aws/kafka"
 	"github.com/upbound/extensions-migration/converters/provider-aws/kms"
+	"github.com/upbound/extensions-migration/converters/provider-aws/mq"
 	"github.com/upbound/extensions-migration/converters/provider-aws/rds"
 	"github.com/upbound/extensions-migration/converters/provider-aws/route53"
 	"github.com/upbound/extensions-migration/converters/provider-aws/route53resolver"
@@ -68,8 +73,28 @@ import (
 // RegisterAllKnownConverters registers all known converters for provider-aws
 // All future API converters for the community AWS provider must be registered in this function for the correct GVK
 func RegisterAllKnownConverters(r *migration.Registry) {
+	r.RegisterAPIConversionFunctions(apigatewayv2v1alpha1.APIGroupVersionKind,
+		apigatewayv2.APIResource, migration.DefaultCompositionConverter(nil, common.ConvertComposedTemplateTags), common.DefaultPatchSetsConverter)
+	r.RegisterAPIConversionFunctions(apigatewayv2v1alpha1.APIMappingGroupVersionKind,
+		apigatewayv2.APIMappingResource, migration.DefaultCompositionConverter(nil, common.ConvertComposedTemplateTags), common.DefaultPatchSetsConverter)
+	r.RegisterAPIConversionFunctions(apigatewayv2v1alpha1.DeploymentGroupVersionKind,
+		apigatewayv2.DeploymentResource, migration.DefaultCompositionConverter(nil, common.ConvertComposedTemplateTags), common.DefaultPatchSetsConverter)
+	r.RegisterAPIConversionFunctions(apigatewayv2v1alpha1.DomainNameGroupVersionKind,
+		apigatewayv2.DomainNameResource, migration.DefaultCompositionConverter(nil, common.ConvertComposedTemplateTags), common.DefaultPatchSetsConverter)
+	r.RegisterAPIConversionFunctions(apigatewayv2v1alpha1.IntegrationGroupVersionKind,
+		apigatewayv2.IntegrationResource, migration.DefaultCompositionConverter(nil, common.ConvertComposedTemplateTags), common.DefaultPatchSetsConverter)
+	r.RegisterAPIConversionFunctions(apigatewayv2v1alpha1.RouteGroupVersionKind,
+		apigatewayv2.RouteResource, migration.DefaultCompositionConverter(nil, common.ConvertComposedTemplateTags), common.DefaultPatchSetsConverter)
+	r.RegisterAPIConversionFunctions(apigatewayv2v1alpha1.StageGroupVersionKind,
+		apigatewayv2.StageResource, migration.DefaultCompositionConverter(nil, common.ConvertComposedTemplateTags), common.DefaultPatchSetsConverter)
+	r.RegisterAPIConversionFunctions(apigatewayv2v1beta1.VPCLinkGroupVersionKind,
+		apigatewayv2.VPCLinkV1Alpha1Resource, migration.DefaultCompositionConverter(nil, common.ConvertComposedTemplateTags), common.DefaultPatchSetsConverter)
+	r.RegisterAPIConversionFunctions(apigatewayv2v1beta1.VPCLinkGroupVersionKind,
+		apigatewayv2.VPCLinkV1Beta1Resource, migration.DefaultCompositionConverter(nil, common.ConvertComposedTemplateTags), common.DefaultPatchSetsConverter)
 	r.RegisterAPIConversionFunctions(cloudfrontv1alpha1.DistributionGroupVersionKind,
 		cloudfront.DistributionResource, nil, common.DefaultPatchSetsConverter)
+	r.RegisterAPIConversionFunctions(cloudfrontv1alpha1.ResponseHeadersPolicyGroupVersionKind,
+		cloudfront.ResponseHeadersPolicyResource, migration.DefaultCompositionConverter(nil, common.ConvertComposedTemplateTags), common.DefaultPatchSetsConverter)
 	r.RegisterAPIConversionFunctions(cloudwatchlogsv1alpha1.LogGroupGroupVersionKind,
 		cloudwatchlogs.LogGroupResource, nil, nil)
 	r.RegisterAPIConversionFunctions(docdbv1alpha1.DBClusterGroupVersionKind,
@@ -154,6 +179,8 @@ func RegisterAllKnownConverters(r *migration.Registry) {
 			"spec.forProvider.enabled": "spec.forProvider.isEnabled",
 			"status.atProvider.keyID":  "status.atProvider.keyId",
 		}, common.ConvertComposedTemplateTags), common.DefaultPatchSetsConverter)
+	r.RegisterAPIConversionFunctions(mqv1alpha1.BrokerGroupVersionKind,
+		mq.BrokerResource, migration.DefaultCompositionConverter(nil, common.ConvertComposedTemplateTags), common.DefaultPatchSetsConverter)
 	r.RegisterAPIConversionFunctions(rdsv1alpha1.DBParameterGroupGroupVersionKind,
 		rds.ParameterGroupResource, migration.DefaultCompositionConverter(nil, common.ConvertComposedTemplateTags), common.DefaultPatchSetsConverter)
 	r.RegisterAPIConversionFunctions(databasev1beta1.RDSInstanceGroupVersionKind,
