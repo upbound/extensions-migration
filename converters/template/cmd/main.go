@@ -40,11 +40,12 @@ func main() {
 	// Common CLI Flags
 	// They can be extended according to requirements
 	var (
-		app            = kingpin.New(filepath.Base(os.Args[0]), "Upbound migration plan generator for migrating Kubernetes objects from community providers to official providers.").DefaultEnvars()
-		planPath       = app.Flag("plan-path", "Path where the generated migration plan will be stored").Short('p').Default("migration_plan.yaml").String()
-		sourcePath     = app.Flag("source-path", "Path of the root directory for the filesystem source. If this flag is not specified, Kubernetes source will be used.").Short('s').String()
-		kubeconfigPath = app.Flag("kubeconfig", "Path of the kubernetes config file. Defaults to ~/.kube/config ").String()
-		skipGVKsPath   = app.Flag("skip-gvks", "Path of the file containing the GVKs to skip").String()
+		app               = kingpin.New(filepath.Base(os.Args[0]), "Upbound migration plan generator for migrating Kubernetes objects from community providers to official providers.").DefaultEnvars()
+		planPath          = app.Flag("plan-path", "Path where the generated migration plan will be stored").Short('p').Default("migration_plan.yaml").String()
+		sourcePath        = app.Flag("source-path", "Path of the root directory for the filesystem source. If this flag is not specified, Kubernetes source will be used.").Short('s').String()
+		kubeconfigPath    = app.Flag("kubeconfig", "Path of the kubernetes config file. Defaults to ~/.kube/config ").String()
+		skipGVKsPath      = app.Flag("skip-gvks", "Path of the file containing the GVKs to skip").String()
+		setProviderConfig = app.Flag("set-provider-config", "Used to set a ProviderConfig Reference to all Managed Resources. The string specified for this flag is added as a ProviderConfig Reference to all MRs to be converted.").String()
 	)
 	if len(*kubeconfigPath) == 0 {
 		homeDir, err := os.UserHomeDir()
@@ -74,6 +75,12 @@ func main() {
 
 	// Register all known API converters for the community AWS provider
 	provideraws.RegisterAllKnownConverters(registry)
+
+	// Register ProviderConfigPreProcessor
+	if *setProviderConfig != "" {
+		pc := common.NewProviderConfigPreProcessor(*setProviderConfig)
+		registry.RegisterResourcePreProcessor(migration.ResourcePreProcessor(pc.SetProviderConfig))
+	}
 
 	// Initialize Source for reading resources
 	var source migration.Source

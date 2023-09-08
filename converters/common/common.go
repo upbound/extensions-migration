@@ -15,6 +15,8 @@
 package common
 
 import (
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	v1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
 	"github.com/pkg/errors"
 	"github.com/upbound/upjet/pkg/migration"
@@ -72,5 +74,20 @@ func SplittedResourcePatches(convertedTemplates []*v1.ComposedTemplate, resource
 			}
 		}
 	}
+	return nil
+}
+
+type providerConfigPreProcessor struct {
+	providerConfigName string
+}
+
+func NewProviderConfigPreProcessor(providerConfigName string) *providerConfigPreProcessor {
+	return &providerConfigPreProcessor{providerConfigName: providerConfigName}
+}
+
+func (pc *providerConfigPreProcessor) SetProviderConfig(mg resource.Managed) error {
+	mg.SetProviderConfigReference(&xpv1.Reference{
+		Name: pc.providerConfigName,
+	})
 	return nil
 }
