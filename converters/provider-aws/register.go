@@ -45,7 +45,7 @@ import (
 	secretsmanagerv1beta1 "github.com/crossplane-contrib/provider-aws/apis/secretsmanager/v1beta1"
 	snsv1beta1 "github.com/crossplane-contrib/provider-aws/apis/sns/v1beta1"
 	sqsv1beta1 "github.com/crossplane-contrib/provider-aws/apis/sqs/v1beta1"
-	"github.com/upbound/upjet/pkg/migration"
+	"github.com/crossplane/upjet/pkg/migration"
 
 	"github.com/upbound/extensions-migration/converters/provider-aws/apigatewayv2"
 	"github.com/upbound/extensions-migration/converters/provider-aws/cloudfront"

@@ -7,7 +7,7 @@ require (
 	github.com/upbound/extensions-migration v0.1.0-rc.1.0.20230815112541-eb63a5c5393e
 	github.com/upbound/extensions-migration/converters/provider-aws v0.0.0-20230815094445-f6499b966d7f
 	github.com/upbound/provider-aws v0.38.0
-	github.com/upbound/upjet v0.11.0-rc.0.0.20230905122636-ac6f4d34ea1a
+	github.com/crossplane/upjet v0.11.0-rc.0.0.20230905122636-ac6f4d34ea1a
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apimachinery v0.27.3

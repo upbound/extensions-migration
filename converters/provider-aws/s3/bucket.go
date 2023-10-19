@@ -17,9 +17,9 @@ package s3
 import (
 	srcv1beta1 "github.com/crossplane-contrib/provider-aws/apis/s3/v1beta1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/crossplane/upjet/pkg/migration"
 	"github.com/pkg/errors"
 	targetv1beta1 "github.com/upbound/provider-aws/apis/s3/v1beta1"
-	"github.com/upbound/upjet/pkg/migration"
 )
 
 func BucketResource(mg resource.Managed) ([]resource.Managed, error) {
