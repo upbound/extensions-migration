@@ -157,6 +157,9 @@ func generatePlan(kongCtx *kong.Context, opts *Options, planDir string, mode str
 	var skipGVKs []schema.GroupVersionKind
 	if opts.Generate.Managed.SkipGVKs != "" {
 		skipGVKs, err = readSkipFile(opts.Generate.Managed.SkipGVKs)
+		if err != nil {
+			kongCtx.FatalIfErrorf(err, "Failed to read the skip GVK file")
+		}
 	}
 
 	pgOpts := []migration.PlanGeneratorOption{
