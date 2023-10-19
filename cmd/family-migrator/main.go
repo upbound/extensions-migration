@@ -27,13 +27,14 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/alecthomas/kong"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
+	"github.com/crossplane/upjet/pkg/migration"
 	"github.com/pkg/errors"
-	"github.com/upbound/upjet/pkg/migration"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/upbound/extensions-migration/converters/common"
 	"github.com/upbound/extensions-migration/pkg/converter/configuration"
 )
 
@@ -76,7 +77,9 @@ type Options struct {
 		} `kong:"cmd"`
 
 		Managed struct {
-			resourcePath string
+			resourcePath   string
+			SkipGVKs       string `name:"skip-gvks" help:"Path of the file containing the GVKs to skip." survey:"skip-gvks"`
+			ProviderConfig string `name:"set-provider-config" help:"Used to set a ProviderConfig Reference to all Managed Resources. The string specified for this flag is added as a ProviderConfig Reference to all MRs to be converted." survey:"set-provider-config"`
 		} `kong:"cmd"`
 
 		RegistryOrg        string `name:"regorg" help:"<registry host>/<organization> for the provider family packages."`
@@ -124,6 +127,11 @@ func main() {
 func generatePlan(kongCtx *kong.Context, opts *Options, planDir string, mode string) {
 	r := migration.NewRegistry(runtime.NewScheme())
 
+	if opts.Generate.Managed.ProviderConfig != "" {
+		pc := common.NewProviderConfigPreProcessor(opts.Generate.Managed.ProviderConfig)
+		r.RegisterResourcePreProcessor(migration.ResourcePreProcessor(pc.SetProviderConfig))
+	}
+
 	switch mode {
 	case configurationMode:
 		if err := registerConfigurationPackageConverters(opts, r); err != nil {
@@ -146,9 +154,14 @@ func generatePlan(kongCtx *kong.Context, opts *Options, planDir string, mode str
 		kongCtx.FatalIfErrorf(err, "Failed to initialize sources")
 	}
 
+	var skipGVKs []schema.GroupVersionKind
+	if opts.Generate.Managed.SkipGVKs != "" {
+		skipGVKs, err = readSkipFile(opts.Generate.Managed.SkipGVKs)
+	}
+
 	pgOpts := []migration.PlanGeneratorOption{
 		migration.WithMultipleSources(sources...),
-		migration.WithSkipGVKs(schema.GroupVersionKind{}),
+		migration.WithSkipGVKs(skipGVKs...),
 		migration.WithEnableConfigurationMigrationSteps(),
 	}
 
@@ -607,4 +620,28 @@ func (cb *executionCallback) StepFailed(s migration.Step, index int, diagnostics
 		return migration.CallbackResult{Action: migration.ActionRepeat}
 	}
 
+}
+
+func readSkipFile(path string) ([]schema.GroupVersionKind, error) {
+	buff, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var skipGVKs []schema.GroupVersionKind
+	var skipGVKMapSlice []map[string]string
+
+	if err := yaml.Unmarshal(buff, &skipGVKMapSlice); err != nil {
+		return nil, err
+	}
+
+	for _, skipGVK := range skipGVKMapSlice {
+		skipGVKs = append(skipGVKs, schema.GroupVersionKind{
+			Group:   skipGVK["group"],
+			Version: skipGVK["version"],
+			Kind:    skipGVK["kind"],
+		})
+	}
+
+	return skipGVKs, nil
 }
