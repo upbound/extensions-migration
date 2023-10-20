@@ -28,7 +28,8 @@ func BucketResource(mg resource.Managed) ([]resource.Managed, error) {
 	if _, err := migration.CopyInto(source, target, targetv1beta1.Bucket_GroupVersionKind); err != nil {
 		return nil, errors.Wrap(err, "failed to copy source into target")
 	}
-
+	target.Spec.ForProvider.Region = &source.Spec.ForProvider.LocationConstraint
+	
 	return []resource.Managed{
 		target,
 	}, nil
