@@ -18,8 +18,9 @@ package configuration
 
 import (
 	"fmt"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strings"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	xpmetav1 "github.com/crossplane/crossplane/apis/pkg/meta/v1"
 	xpmetav1alpha1 "github.com/crossplane/crossplane/apis/pkg/meta/v1alpha1"
@@ -264,6 +265,10 @@ func (pf *ProviderPkgFamilyParameters) ProviderPackageV1(p xppkgv1.Provider) ([]
 			continue
 		}
 		if extractProviderNameFromPackageName(p.Spec.PackageSpec.Package) == pf.Monolith {
+			cc := p.Spec.ControllerConfigReference
+			controllerConfigReference := xppkgv1.ControllerConfigReference{
+				Name: cc.Name,
+			}
 			providers = append(providers, xppkgv1.Provider{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: fmt.Sprintf("upbound-%s", providerName),
@@ -273,6 +278,7 @@ func (pf *ProviderPkgFamilyParameters) ProviderPackageV1(p xppkgv1.Provider) ([]
 						Package:                  fmt.Sprintf("%s/%s:%s", "xpkg.upbound.io/upbound", providerName, pf.FamilyVersion),
 						RevisionActivationPolicy: &ap,
 					},
+					ControllerConfigReference: &controllerConfigReference,
 				},
 			})
 		}
