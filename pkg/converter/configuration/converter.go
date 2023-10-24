@@ -265,11 +265,7 @@ func (pf *ProviderPkgFamilyParameters) ProviderPackageV1(p xppkgv1.Provider) ([]
 			continue
 		}
 		if extractProviderNameFromPackageName(p.Spec.PackageSpec.Package) == pf.Monolith {
-			cc := p.Spec.ControllerConfigReference
-			controllerConfigReference := xppkgv1.ControllerConfigReference{
-				Name: cc.Name,
-			}
-			providers = append(providers, xppkgv1.Provider{
+			provider := xppkgv1.Provider{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: fmt.Sprintf("upbound-%s", providerName),
 				},
@@ -278,9 +274,16 @@ func (pf *ProviderPkgFamilyParameters) ProviderPackageV1(p xppkgv1.Provider) ([]
 						Package:                  fmt.Sprintf("%s/%s:%s", "xpkg.upbound.io/upbound", providerName, pf.FamilyVersion),
 						RevisionActivationPolicy: &ap,
 					},
-					ControllerConfigReference: &controllerConfigReference,
 				},
-			})
+			}
+			cc := p.Spec.ControllerConfigReference
+			if cc != nil {
+				controllerConfigReference := xppkgv1.ControllerConfigReference{
+					Name: cc.Name,
+				}
+				provider.Spec.ControllerConfigReference = &controllerConfigReference
+			}
+			providers = append(providers, provider)
 		}
 	}
 	return providers, nil
