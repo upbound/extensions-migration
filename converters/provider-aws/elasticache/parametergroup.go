@@ -37,7 +37,10 @@ func ParameterGroupResource(mg resource.Managed) ([]resource.Managed, error) {
 		parameter := &targetv1beta1.ParameterParameters{Name: t.ParameterName, Value: t.ParameterValue}
 		target.Spec.ForProvider.Parameter = append(target.Spec.ForProvider.Parameter, *parameter)
 	}
-
+	externalNameParameterGroup := source.Annotations["crossplane.io/external-name"]
+	if len(externalNameParameterGroup) > 0 {
+		target.Spec.ForProvider.Name = &externalNameParameterGroup
+	}
 	target.Spec.ForProvider.Family = source.Spec.ForProvider.CacheParameterGroupFamily
 
 	return []resource.Managed{

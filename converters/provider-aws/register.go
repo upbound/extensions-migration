@@ -158,6 +158,8 @@ func RegisterAllKnownConverters(r *migration.Registry) {
 		elasticache.ReplicationGroupResource, migration.DefaultCompositionConverter(map[string]string{
 			"spec.forProvider.cacheParameterGroupName": "spec.forProvider.parameterGroupName",
 		}, common.ConvertComposedTemplateTags), common.DefaultPatchSetsConverter)
+	r.RegisterAPIConversionFunctions(cachev1alpha1.CacheSubnetGroupGroupVersionKind,
+		elasticache.CacheSubnetGroupResource, nil, nil)
 	r.RegisterAPIConversionFunctions(iamv1beta1.PolicyGroupVersionKind,
 		iam.PolicyResource, migration.DefaultCompositionConverter(map[string]string{
 			"spec.forProvider.document": "spec.forProvider.policy",
