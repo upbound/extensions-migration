@@ -15,8 +15,6 @@
 package elasticache
 
 import (
-	"fmt"
-
 	srcv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/cache/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/pkg/errors"
@@ -31,8 +29,6 @@ func CacheSubnetGroupResource(mg resource.Managed) ([]resource.Managed, error) {
 		return nil, errors.Wrap(err, "failed to copy source into target")
 	}
 
-	en := source.Annotations["foo"]
-	fmt.Println(en)
 	return []resource.Managed{
 		target,
 	}, nil
