@@ -77,13 +77,6 @@ var (
 			"name": "sample-pc",
 		},
 	}
-	unstructuredInvalidProviderConfig = map[string]interface{}{
-		"apiVersion": "xyz.invalid.upbound.io/v1beta1",
-		"kind":       "Kind",
-		"metadata": map[string]interface{}{
-			"name": "sample-pc",
-		},
-	}
 
 	ap = xppkgv1.ManualActivation
 )
@@ -126,8 +119,10 @@ func TestGetSSOPNameFromManagedResource(t *testing.T) {
 				},
 			},
 			want: want{
-				providerNames: map[string]struct{}{},
-				err:           nil,
+				providerNames: map[string]struct{}{
+					"provider-family-aws": {},
+				},
+				err: nil,
 			},
 		},
 		"Azure": {
@@ -155,8 +150,10 @@ func TestGetSSOPNameFromManagedResource(t *testing.T) {
 				},
 			},
 			want: want{
-				providerNames: map[string]struct{}{},
-				err:           nil,
+				providerNames: map[string]struct{}{
+					"provider-family-azure": {},
+				},
+				err: nil,
 			},
 		},
 		"Gcp": {
@@ -184,21 +181,10 @@ func TestGetSSOPNameFromManagedResource(t *testing.T) {
 				},
 			},
 			want: want{
-				providerNames: map[string]struct{}{},
-				err:           nil,
-			},
-		},
-		"InvalidProvider": {
-			args: args{
-				u: migration.UnstructuredWithMetadata{
-					Object: unstructured.Unstructured{
-						Object: unstructuredInvalidProviderConfig,
-					},
+				providerNames: map[string]struct{}{
+					"provider-family-gcp": {},
 				},
-			},
-			want: want{
-				providerNames: map[string]struct{}{},
-				err:           nil,
+				err: nil,
 			},
 		},
 	}
@@ -259,10 +245,6 @@ func TestConfigurationMetadataV1(t *testing.T) {
 									Version:  ">=v0.33.0",
 								},
 								{
-									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-family-aws"),
-									Version:  ">=v0.33.0",
-								},
-								{
 									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-helm"),
 									Version:  ">=v0.15.0",
 								},
@@ -294,10 +276,6 @@ func TestConfigurationMetadataV1(t *testing.T) {
 							DependsOn: []xpmetav1.Dependency{
 								{
 									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-aws-ec2"),
-									Version:  ">=v0.33.0",
-								},
-								{
-									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-family-aws"),
 									Version:  ">=v0.33.0",
 								},
 							},
@@ -376,10 +354,6 @@ func TestConfigurationMetadataV1Alpha(t *testing.T) {
 									Version:  ">=v0.33.0",
 								},
 								{
-									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-family-aws"),
-									Version:  ">=v0.33.0",
-								},
-								{
 									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-helm"),
 									Version:  ">=v0.15.0",
 								},
@@ -411,10 +385,6 @@ func TestConfigurationMetadataV1Alpha(t *testing.T) {
 							DependsOn: []xpmetav1alpha1.Dependency{
 								{
 									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-aws-ec2"),
-									Version:  ">=v0.33.0",
-								},
-								{
-									Provider: ptrFromString("xpkg.upbound.io/upbound/provider-family-aws"),
 									Version:  ">=v0.33.0",
 								},
 							},
@@ -528,7 +498,11 @@ func TestPackageLockV1Beta1(t *testing.T) {
 			},
 			want: want{
 				lock: &xppkgv1beta1.Lock{
-					Packages: []xppkgv1beta1.LockPackage{},
+					Packages: []xppkgv1beta1.LockPackage{
+						{
+							Source: "xpkg.upbound.io/upbound/provider-aws",
+						},
+					},
 				},
 				err: nil,
 			},
@@ -601,7 +575,7 @@ func TestPackagePkgFamilyConfigParameters_ProviderPackageV1(t *testing.T) {
 				providers: []xppkgv1.Provider{
 					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "provider-family-aws",
+							Name: "upbound-provider-family-aws",
 						},
 						Spec: xppkgv1.ProviderSpec{
 							PackageSpec: xppkgv1.PackageSpec{
@@ -662,7 +636,7 @@ func TestPackagePkgFamilyParameters_ProviderPackageV1(t *testing.T) {
 				providers: []xppkgv1.Provider{
 					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "provider-aws-ec2",
+							Name: "upbound-provider-aws-ec2",
 						},
 						Spec: xppkgv1.ProviderSpec{
 							PackageSpec: xppkgv1.PackageSpec{
@@ -673,7 +647,7 @@ func TestPackagePkgFamilyParameters_ProviderPackageV1(t *testing.T) {
 					},
 					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "provider-aws-eks",
+							Name: "upbound-provider-aws-eks",
 						},
 						Spec: xppkgv1.ProviderSpec{
 							PackageSpec: xppkgv1.PackageSpec{
