@@ -22,7 +22,7 @@ GO_REQUIRED_VERSION = 1.19
 # GOLANGCILINT_VERSION ?= 1.53.3
 GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider-list $(GO_PROJECT)/cmd/family-migrator
 GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
-GO_SUBDIRS += cmd internal
+GO_SUBDIRS += cmd internal pkg converters
 GO111MODULE = on
 -include build/makelib/golang.mk
 
