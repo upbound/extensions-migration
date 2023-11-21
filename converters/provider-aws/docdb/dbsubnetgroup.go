@@ -17,9 +17,9 @@ package docdb
 import (
 	srcv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/docdb/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/crossplane/upjet/pkg/migration"
 	"github.com/pkg/errors"
 	targetv1beta1 "github.com/upbound/provider-aws/apis/docdb/v1beta1"
-	"github.com/upbound/upjet/pkg/migration"
 )
 
 func SubnetGroupResource(mg resource.Managed) ([]resource.Managed, error) {

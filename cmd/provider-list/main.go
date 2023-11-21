@@ -29,8 +29,8 @@ import (
 	"sort"
 
 	"github.com/alecthomas/kong"
+	"github.com/crossplane/upjet/pkg/migration"
 	"github.com/pkg/errors"
-	"github.com/upbound/upjet/pkg/migration"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 

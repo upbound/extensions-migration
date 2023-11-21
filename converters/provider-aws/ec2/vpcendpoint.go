@@ -18,9 +18,9 @@ import (
 	srcv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/ec2/v1alpha1"
 	runtimev1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/crossplane/upjet/pkg/migration"
 	"github.com/pkg/errors"
 	targetv1beta1 "github.com/upbound/provider-aws/apis/ec2/v1beta1"
-	"github.com/upbound/upjet/pkg/migration"
 )
 
 func VPCEndpointResource(mg resource.Managed) ([]resource.Managed, error) {

@@ -18,9 +18,9 @@ import (
 	srcv1beta1 "github.com/crossplane-contrib/provider-aws/apis/eks/v1beta1"
 	runtimev1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/crossplane/upjet/pkg/migration"
 	"github.com/pkg/errors"
 	targetv1beta1 "github.com/upbound/provider-aws/apis/eks/v1beta1"
-	"github.com/upbound/upjet/pkg/migration"
 )
 
 func ClusterResource(mg resource.Managed) ([]resource.Managed, error) {

@@ -26,8 +26,8 @@ import (
 	xpmetav1alpha1 "github.com/crossplane/crossplane/apis/pkg/meta/v1alpha1"
 	xppkgv1 "github.com/crossplane/crossplane/apis/pkg/v1"
 	xppkgv1beta1 "github.com/crossplane/crossplane/apis/pkg/v1beta1"
+	"github.com/crossplane/upjet/pkg/migration"
 	"github.com/pkg/errors"
-	"github.com/upbound/upjet/pkg/migration"
 )
 
 const (
