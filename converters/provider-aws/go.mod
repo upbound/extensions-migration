@@ -9,7 +9,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/upbound/extensions-migration v0.1.0-rc.1.0.20230815112541-eb63a5c5393e
 	github.com/upbound/provider-aws v0.38.0
-	github.com/upbound/upjet v0.10.0-rc.0.0.20230815092629-6e0d116c3666
+	github.com/crossplane/upjet v0.10.0-rc.0.0.20230815092629-6e0d116c3666
 )
 
 require (

@@ -25,8 +25,8 @@ import (
 	xppkgv1beta1 "github.com/crossplane/crossplane/apis/pkg/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/crossplane/upjet/pkg/migration"
 	"github.com/google/go-cmp/cmp"
-	"github.com/upbound/upjet/pkg/migration"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 

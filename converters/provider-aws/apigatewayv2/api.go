@@ -17,10 +17,10 @@ package apigatewayv2
 import (
 	srcv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/apigatewayv2/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/crossplane/upjet/pkg/migration"
 	"github.com/pkg/errors"
 	"github.com/upbound/extensions-migration/converters/common"
 	targetv1beta1 "github.com/upbound/provider-aws/apis/apigatewayv2/v1beta1"
-	"github.com/upbound/upjet/pkg/migration"
 )
 
 func APIResource(mg resource.Managed) ([]resource.Managed, error) {
