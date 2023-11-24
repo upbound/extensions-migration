@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/crossplane-contrib/provider-aws v0.43.0-rc.0.0.20230809135829-3f14add7c3a9
-	github.com/crossplane/crossplane v1.10.0
+	github.com/crossplane/crossplane v1.11.5
 	github.com/crossplane/crossplane-runtime v0.20.0
 	github.com/pkg/errors v0.9.1
 	github.com/upbound/extensions-migration v0.1.0-rc.1.0.20230815112541-eb63a5c5393e
