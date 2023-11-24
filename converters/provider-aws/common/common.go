@@ -6,8 +6,8 @@ import (
 
 	"github.com/crossplane/crossplane-runtime/pkg/fieldpath"
 	xpv1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
+	"github.com/crossplane/upjet/pkg/migration"
 	"github.com/pkg/errors"
-	"github.com/upbound/upjet/pkg/migration"
 )
 
 // DefaultPatchSetsConverter is a default patchset converter for the community provider-aws

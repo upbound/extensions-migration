@@ -19,9 +19,9 @@ import (
 	runtimev1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	v1 "github.com/crossplane/crossplane/apis/apiextensions/v1"
+	"github.com/crossplane/upjet/pkg/migration"
 	"github.com/pkg/errors"
 	targetv1beta1 "github.com/upbound/provider-aws/apis/ec2/v1beta1"
-	"github.com/upbound/upjet/pkg/migration"
 
 	"github.com/upbound/extensions-migration/converters/common"
 	providerawscommon "github.com/upbound/extensions-migration/converters/provider-aws/common"

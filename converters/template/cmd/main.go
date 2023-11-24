@@ -25,8 +25,8 @@ import (
 	"path/filepath"
 
 	sourceapis "github.com/crossplane-contrib/provider-aws/apis"
+	"github.com/crossplane/upjet/pkg/migration"
 	targetapis "github.com/upbound/provider-aws/apis"
-	"github.com/upbound/upjet/pkg/migration"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/runtime"

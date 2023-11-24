@@ -17,9 +17,9 @@ package route53
 import (
 	srcv1alpha1 "github.com/crossplane-contrib/provider-aws/apis/route53/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/crossplane/upjet/pkg/migration"
 	"github.com/pkg/errors"
 	targetv1beta1 "github.com/upbound/provider-aws/apis/route53/v1beta1"
-	"github.com/upbound/upjet/pkg/migration"
 )
 
 func ResourceRecordSetResource(mg resource.Managed) ([]resource.Managed, error) {
