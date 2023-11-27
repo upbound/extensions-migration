@@ -375,8 +375,6 @@ github.com/upbound/provider-aws v0.38.0 h1:7e3djbXpm92tuVTWa83wue8/P3SyyBRUqpVGL
 github.com/upbound/provider-aws v0.38.0/go.mod h1:3ghjoDmZKHcJp9Z1Ssz0Mb1k6Sx0yF4cj8qx/xILIrw=
 github.com/upbound/provider-aws v0.44.0 h1:ZOrbBjsJ++DOf4/YayEjMzSccKwAs2TvPl90tUaZnaI=
 github.com/upbound/provider-aws v0.44.0/go.mod h1:idy7Mg41OAljOd+FmiSBPuX+D13b8aRys6Uwojsbu1s=
-github.com/upbound/upjet v0.9.0-rc.0.0.20230801142301-06bdecc2fcb9 h1:ECC8AW0w2NcubOhWmu5SD5C3Vc/etRM6rhPo4LYB2No=
-github.com/upbound/upjet v0.9.0-rc.0.0.20230801142301-06bdecc2fcb9/go.mod h1:2RXHgpIugCL/S/Use1QJAeVaev901RBeUByQh5gUtGk=
 github.com/vmihailenco/msgpack v3.3.3+incompatible/go.mod h1:fy3FlTQTDXWkZ7Bh6AcGMlsjHatGryHQYUTf1ShIgkk=
 github.com/vmihailenco/msgpack v4.0.4+incompatible h1:dSLoQfGFAo3F6OoNhwUmLwVgaUXK79GlxNBwueZn0xI=
 github.com/vmihailenco/msgpack v4.0.4+incompatible/go.mod h1:fy3FlTQTDXWkZ7Bh6AcGMlsjHatGryHQYUTf1ShIgkk=

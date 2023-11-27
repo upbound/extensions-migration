@@ -759,10 +759,6 @@ github.com/ugorji/go v1.1.4/go.mod h1:uQMGLiO92mf5W77hV/PUCpI3pbzQx3CRekS0kk+RGr
 github.com/ugorji/go/codec v0.0.0-20181204163529-d75b2dcb6bc8/go.mod h1:VFNgLljTbGfSG7qAOspJ7OScBnGdDN/yBr0sguwnwf0=
 github.com/upbound/provider-aws v0.38.0 h1:7e3djbXpm92tuVTWa83wue8/P3SyyBRUqpVGLSTxW2s=
 github.com/upbound/provider-aws v0.38.0/go.mod h1:3ghjoDmZKHcJp9Z1Ssz0Mb1k6Sx0yF4cj8qx/xILIrw=
-github.com/upbound/upjet v0.11.0-rc.0.0.20230905122636-ac6f4d34ea1a h1:sUI2Boq7Q4ukGuEby9KlprQW7psRcQ3e6sDsuTGADmY=
-github.com/upbound/upjet v0.11.0-rc.0.0.20230905122636-ac6f4d34ea1a/go.mod h1:2RXHgpIugCL/S/Use1QJAeVaev901RBeUByQh5gUtGk=
-github.com/upbound/upjet v0.11.0-rc.0.0.20230908112734-f73a6622af8b h1:PYDVJHjDzfc2qeWBaINmcD5iZ7yCX/nPFHdInmz62wM=
-github.com/upbound/upjet v0.11.0-rc.0.0.20230908112734-f73a6622af8b/go.mod h1:2RXHgpIugCL/S/Use1QJAeVaev901RBeUByQh5gUtGk=
 github.com/vmihailenco/msgpack v3.3.3+incompatible/go.mod h1:fy3FlTQTDXWkZ7Bh6AcGMlsjHatGryHQYUTf1ShIgkk=
 github.com/vmihailenco/msgpack v4.0.4+incompatible h1:dSLoQfGFAo3F6OoNhwUmLwVgaUXK79GlxNBwueZn0xI=
 github.com/vmihailenco/msgpack v4.0.4+incompatible/go.mod h1:fy3FlTQTDXWkZ7Bh6AcGMlsjHatGryHQYUTf1ShIgkk=
