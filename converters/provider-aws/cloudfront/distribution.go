@@ -50,13 +50,34 @@ func DistributionResource(mg resource.Managed) ([]resource.Managed, error) {
 	target.Spec.ForProvider.ViewerCertificate[0].MinimumProtocolVersion = source.Spec.ForProvider.DistributionConfig.ViewerCertificate.MinimumProtocolVersion
 
 	target.Spec.ForProvider.WebACLID = source.Spec.ForProvider.DistributionConfig.WebACLID
+	if source.Spec.ForProvider.DistributionConfig.Origins.Items != nil {
+		for _, i := range source.Spec.ForProvider.DistributionConfig.Origins.Items {
+			if i.S3OriginConfig != nil {
+				target.Spec.ForProvider.Origin = append(target.Spec.ForProvider.Origin, targetv1beta1.OriginParameters{
+					DomainName:            i.DomainName,
+					OriginAccessControlID: i.ID,
+					S3OriginConfig:        []targetv1beta1.S3OriginConfigParameters{{OriginAccessIdentity: i.S3OriginConfig.OriginAccessIdentity}},
+				})
+			} else {
+				convertHttpPort := float64(*i.CustomOriginConfig.HTTPPort)
+				convertHttpsPort := float64(*i.CustomOriginConfig.HTTPSPort)
+				convertOriginKeepaliveTimeout := float64(*i.CustomOriginConfig.OriginKeepaliveTimeout)
+				convertOriginReadTimeout := float64(*i.CustomOriginConfig.OriginReadTimeout)
 
-	for _, i := range source.Spec.ForProvider.DistributionConfig.Origins.Items {
-		target.Spec.ForProvider.Origin = append(target.Spec.ForProvider.Origin, targetv1beta1.OriginParameters{
-			DomainName:            i.DomainName,
-			OriginAccessControlID: i.ID,
-			S3OriginConfig:        []targetv1beta1.S3OriginConfigParameters{{OriginAccessIdentity: i.S3OriginConfig.OriginAccessIdentity}},
-		})
+				target.Spec.ForProvider.Origin = append(target.Spec.ForProvider.Origin, targetv1beta1.OriginParameters{
+					DomainName: i.DomainName,
+					OriginID:   i.ID,
+					CustomOriginConfig: []targetv1beta1.CustomOriginConfigParameters{{
+						HTTPPort:               &convertHttpPort,
+						HTTPSPort:              &convertHttpsPort,
+						OriginKeepaliveTimeout: &convertOriginKeepaliveTimeout,
+						OriginReadTimeout:      &convertOriginReadTimeout,
+						OriginProtocolPolicy:   i.CustomOriginConfig.OriginProtocolPolicy,
+						OriginSSLProtocols:     i.CustomOriginConfig.OriginSSLProtocols.Items,
+					}},
+				})
+			}
+		}
 	}
 
 	return []resource.Managed{
