@@ -60,7 +60,7 @@ func QueueResource(mg resource.Managed) ([]resource.Managed, error) {
 
 	if source.Spec.ForProvider.RedrivePolicy != nil {
 		RedrivePolicyData := map[string]interface{}{
-			"deadLetterTargetArn": source.Spec.ForProvider.RedrivePolicy.DeadLetterTargetARNRef.Name,
+			"deadLetterTargetArn": source.Spec.ForProvider.RedrivePolicy.DeadLetterTargetARN,
 			"maxReceiveCount":     source.Spec.ForProvider.RedrivePolicy.MaxReceiveCount,
 		}
 
