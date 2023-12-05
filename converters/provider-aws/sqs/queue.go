@@ -27,14 +27,10 @@ import (
 func QueueResource(mg resource.Managed) ([]resource.Managed, error) {
 	source := mg.(*srcv1alpha1.Queue)
 	target := &targetv1beta1.Queue{}
-	if _, err := migration.CopyInto(source, target, targetv1beta1.Queue_GroupVersionKind, "spec.forProvider.tags"); err != nil {
+	if _, err := migration.CopyInto(source, target, targetv1beta1.Queue_GroupVersionKind, "spec.forProvider.redrivePolicy"); err != nil {
 		return nil, errors.Wrap(err, "failed to copy source into target")
 	}
-	m := make(map[string]string)
-	target.Spec.ForProvider.Tags = make(map[string]*string, len(source.Spec.ForProvider.Tags))
-	for k, v := range source.Spec.ForProvider.Tags {
-		m[k] = v
-	}
+
 	target.Spec.ForProvider.Region = &source.Spec.ForProvider.Region
 	if source.Spec.ForProvider.DelaySeconds != nil {
 		convert := float64(*source.Spec.ForProvider.DelaySeconds)
@@ -64,14 +60,16 @@ func QueueResource(mg resource.Managed) ([]resource.Managed, error) {
 
 	if source.Spec.ForProvider.RedrivePolicy != nil {
 		RedrivePolicyData := map[string]interface{}{
-			"deadLetterTargetArn": source.Spec.ForProvider.RedrivePolicy.DeadLetterTargetARNRef.Name,
+			"deadLetterTargetArn": source.Spec.ForProvider.RedrivePolicy.DeadLetterTargetARN,
 			"maxReceiveCount":     source.Spec.ForProvider.RedrivePolicy.MaxReceiveCount,
 		}
+
 		RedrivePolicyDataJson, err := json.Marshal(RedrivePolicyData)
 		if err != nil {
-			convert := string(RedrivePolicyDataJson)
-			target.Spec.ForProvider.RedrivePolicy = &convert
+			return nil, errors.Wrap(err, "failed to parse redrive policy")
 		}
+		convert := string(RedrivePolicyDataJson)
+		target.Spec.ForProvider.RedrivePolicy = &convert
 	}
 
 	return []resource.Managed{
