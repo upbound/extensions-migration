@@ -49,7 +49,7 @@ func TableResource(mg resource.Managed) ([]resource.Managed, error) {
 	}
 	if source.Spec.ForProvider.GlobalSecondaryIndexes != nil {
 		for _, t := range source.Spec.ForProvider.GlobalSecondaryIndexes {
-			if t.IndexName == nil {
+			if t.IndexName != nil {
 				parameter := &targetv1beta1.GlobalSecondaryIndexParameters{
 					Name:             t.IndexName,
 					NonKeyAttributes: t.Projection.NonKeyAttributes,
