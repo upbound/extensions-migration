@@ -39,6 +39,7 @@ func InstanceResource(mg resource.Managed) ([]resource.Managed, error) {
 	target.Spec.ForProvider.IAMDatabaseAuthenticationEnabled = source.Spec.ForProvider.EnableIAMDatabaseAuthentication
 	target.Spec.ForProvider.PerformanceInsightsEnabled = source.Spec.ForProvider.EnablePerformanceInsights
 	target.Spec.ForProvider.FinalSnapshotIdentifier = source.Spec.ForProvider.FinalDBSnapshotIdentifier
+	target.Spec.ForProvider.InstanceClass = &source.Spec.ForProvider.DBInstanceClass
 	target.Spec.ForProvider.Username = source.Spec.ForProvider.MasterUsername
 
 	return []resource.Managed{
