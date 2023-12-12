@@ -83,13 +83,13 @@ func TableResource(mg resource.Managed) ([]resource.Managed, error) {
 		}
 	}
 
-	if source.Spec.ForProvider.ProvisionedThroughput.ReadCapacityUnits != nil {
-		convert := float64(*source.Spec.ForProvider.ProvisionedThroughput.ReadCapacityUnits)
-		target.Spec.ForProvider.ReadCapacity = &convert
+	if source.Spec.ForProvider.ProvisionedThroughput.WriteCapacityUnits != nil {
+		convert := float64(*source.Spec.ForProvider.ProvisionedThroughput.WriteCapacityUnits)
+		target.Spec.ForProvider.WriteCapacity = &convert
 	}
 	if source.Spec.ForProvider.ProvisionedThroughput.ReadCapacityUnits != nil {
 		convert := float64(*source.Spec.ForProvider.ProvisionedThroughput.ReadCapacityUnits)
-		target.Spec.ForProvider.WriteCapacity = &convert
+		target.Spec.ForProvider.ReadCapacity = &convert
 	}
 	target.Spec.ForProvider.StreamEnabled = source.Spec.ForProvider.StreamSpecification.StreamEnabled
 	target.Spec.ForProvider.StreamViewType = source.Spec.ForProvider.StreamSpecification.StreamViewType
