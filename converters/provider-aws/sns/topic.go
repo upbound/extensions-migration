@@ -25,7 +25,7 @@ import (
 func TopicResource(mg resource.Managed) ([]resource.Managed, error) {
 	source := mg.(*srcv1beta1.Topic)
 	target := &targetv1beta1.Topic{}
-	if _, err := migration.CopyInto(source, target, targetv1beta1.TopicPolicy_GroupVersionKind, "spec.forProvider.tags"); err != nil {
+	if _, err := migration.CopyInto(source, target, targetv1beta1.Topic_GroupVersionKind, "spec.forProvider.tags"); err != nil {
 		return nil, errors.Wrap(err, "failed to copy source into target")
 	}
 	target.Spec.ForProvider.Tags = make(map[string]*string, len(source.Spec.ForProvider.Tags))
@@ -36,8 +36,9 @@ func TopicResource(mg resource.Managed) ([]resource.Managed, error) {
 	target.Spec.ForProvider.Region = &source.Spec.ForProvider.Region
 	target.Spec.ForProvider.DisplayName = source.Spec.ForProvider.DisplayName
 	target.Spec.ForProvider.FifoTopic = source.Spec.ForProvider.FifoTopic
-	target.Spec.ForProvider.KMSMasterKeyID = source.Spec.ForProvider.KMSMasterKeyID
-
+	if source.Spec.ForProvider.KMSMasterKeyID != nil {
+		target.Spec.ForProvider.KMSMasterKeyID = source.Spec.ForProvider.KMSMasterKeyID
+	}
 	return []resource.Managed{
 		target,
 	}, nil
