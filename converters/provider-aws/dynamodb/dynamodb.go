@@ -47,40 +47,36 @@ func TableResource(mg resource.Managed) ([]resource.Managed, error) {
 			target.Spec.ForProvider.RangeKey = t.AttributeName
 		}
 	}
-	if source.Spec.ForProvider.GlobalSecondaryIndexes != nil {
-		for _, t := range source.Spec.ForProvider.GlobalSecondaryIndexes {
-			if t.IndexName != nil {
-				parameter := &targetv1beta1.GlobalSecondaryIndexParameters{
-					Name:             t.IndexName,
-					NonKeyAttributes: t.Projection.NonKeyAttributes,
-					ProjectionType:   t.Projection.ProjectionType,
-				}
-				for _, a := range t.KeySchema {
-					if *a.KeyType == "HASH" {
-						parameter.HashKey = a.AttributeName
-					}
-					if *a.KeyType == "RANGE" {
-						parameter.RangeKey = a.AttributeName
-					}
-				}
-				target.Spec.ForProvider.GlobalSecondaryIndex = append(target.Spec.ForProvider.GlobalSecondaryIndex, *parameter)
-			}
-		}
-	}
-	if source.Spec.ForProvider.LocalSecondaryIndexes != nil {
-		for _, t := range source.Spec.ForProvider.LocalSecondaryIndexes {
-			parameter := &targetv1beta1.LocalSecondaryIndexParameters{
+	for _, t := range source.Spec.ForProvider.GlobalSecondaryIndexes {
+		if t.IndexName != nil {
+			parameter := &targetv1beta1.GlobalSecondaryIndexParameters{
 				Name:             t.IndexName,
 				NonKeyAttributes: t.Projection.NonKeyAttributes,
 				ProjectionType:   t.Projection.ProjectionType,
 			}
 			for _, a := range t.KeySchema {
+				if *a.KeyType == "HASH" {
+					parameter.HashKey = a.AttributeName
+				}
 				if *a.KeyType == "RANGE" {
 					parameter.RangeKey = a.AttributeName
 				}
 			}
-			target.Spec.ForProvider.LocalSecondaryIndex = append(target.Spec.ForProvider.LocalSecondaryIndex, *parameter)
+			target.Spec.ForProvider.GlobalSecondaryIndex = append(target.Spec.ForProvider.GlobalSecondaryIndex, *parameter)
 		}
+	}
+	for _, t := range source.Spec.ForProvider.LocalSecondaryIndexes {
+		parameter := &targetv1beta1.LocalSecondaryIndexParameters{
+			Name:             t.IndexName,
+			NonKeyAttributes: t.Projection.NonKeyAttributes,
+			ProjectionType:   t.Projection.ProjectionType,
+		}
+		for _, a := range t.KeySchema {
+			if *a.KeyType == "RANGE" {
+				parameter.RangeKey = a.AttributeName
+			}
+		}
+		target.Spec.ForProvider.LocalSecondaryIndex = append(target.Spec.ForProvider.LocalSecondaryIndex, *parameter)
 	}
 
 	if source.Spec.ForProvider.ProvisionedThroughput.WriteCapacityUnits != nil {
