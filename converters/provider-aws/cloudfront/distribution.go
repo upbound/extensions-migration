@@ -50,7 +50,7 @@ func DistributionResource(mg resource.Managed) ([]resource.Managed, error) {
 	target.Spec.ForProvider.ViewerCertificate[0].MinimumProtocolVersion = source.Spec.ForProvider.DistributionConfig.ViewerCertificate.MinimumProtocolVersion
 
 	target.Spec.ForProvider.WebACLID = source.Spec.ForProvider.DistributionConfig.WebACLID
-	if source.Spec.ForProvider.DistributionConfig.Origins.Items != nil {
+	if source.Spec.ForProvider.DistributionConfig.Origins != nil {
 		for _, i := range source.Spec.ForProvider.DistributionConfig.Origins.Items {
 			if i.S3OriginConfig != nil {
 				target.Spec.ForProvider.Origin = append(target.Spec.ForProvider.Origin, targetv1beta1.OriginParameters{
