@@ -48,22 +48,23 @@ func TableResource(mg resource.Managed) ([]resource.Managed, error) {
 		}
 	}
 	for _, t := range source.Spec.ForProvider.GlobalSecondaryIndexes {
-		parameter := &targetv1beta1.GlobalSecondaryIndexParameters{
-			Name:             t.IndexName,
-			NonKeyAttributes: t.Projection.NonKeyAttributes,
-			ProjectionType:   t.Projection.ProjectionType,
-		}
-		for _, a := range t.KeySchema {
-			if *a.KeyType == "HASH" {
-				parameter.HashKey = a.AttributeName
+		if t.IndexName != nil {
+			parameter := &targetv1beta1.GlobalSecondaryIndexParameters{
+				Name:             t.IndexName,
+				NonKeyAttributes: t.Projection.NonKeyAttributes,
+				ProjectionType:   t.Projection.ProjectionType,
 			}
-			if *a.KeyType == "RANGE" {
-				parameter.RangeKey = a.AttributeName
+			for _, a := range t.KeySchema {
+				if *a.KeyType == "HASH" {
+					parameter.HashKey = a.AttributeName
+				}
+				if *a.KeyType == "RANGE" {
+					parameter.RangeKey = a.AttributeName
+				}
 			}
+			target.Spec.ForProvider.GlobalSecondaryIndex = append(target.Spec.ForProvider.GlobalSecondaryIndex, *parameter)
 		}
-		target.Spec.ForProvider.GlobalSecondaryIndex = append(target.Spec.ForProvider.GlobalSecondaryIndex, *parameter)
 	}
-
 	for _, t := range source.Spec.ForProvider.LocalSecondaryIndexes {
 		parameter := &targetv1beta1.LocalSecondaryIndexParameters{
 			Name:             t.IndexName,
@@ -78,13 +79,13 @@ func TableResource(mg resource.Managed) ([]resource.Managed, error) {
 		target.Spec.ForProvider.LocalSecondaryIndex = append(target.Spec.ForProvider.LocalSecondaryIndex, *parameter)
 	}
 
-	if source.Spec.ForProvider.ProvisionedThroughput.ReadCapacityUnits != nil {
-		convert := float64(*source.Spec.ForProvider.ProvisionedThroughput.ReadCapacityUnits)
-		target.Spec.ForProvider.ReadCapacity = &convert
+	if source.Spec.ForProvider.ProvisionedThroughput.WriteCapacityUnits != nil {
+		convert := float64(*source.Spec.ForProvider.ProvisionedThroughput.WriteCapacityUnits)
+		target.Spec.ForProvider.WriteCapacity = &convert
 	}
 	if source.Spec.ForProvider.ProvisionedThroughput.ReadCapacityUnits != nil {
 		convert := float64(*source.Spec.ForProvider.ProvisionedThroughput.ReadCapacityUnits)
-		target.Spec.ForProvider.WriteCapacity = &convert
+		target.Spec.ForProvider.ReadCapacity = &convert
 	}
 	target.Spec.ForProvider.StreamEnabled = source.Spec.ForProvider.StreamSpecification.StreamEnabled
 	target.Spec.ForProvider.StreamViewType = source.Spec.ForProvider.StreamSpecification.StreamViewType
